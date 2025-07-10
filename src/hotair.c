@@ -4,8 +4,14 @@
 #include <stdbool.h>
 #include "wait.h"
 
-#define NUM_SHIP_FACINGS 24
+#define NUM_SHIP_BEARINGS 32
 #define DEGREES_PER_FACING 360/NUM_SHIP_FACINGS
+
+#define MAP_BASE_ADDR 0x00000
+#define TILES_BASE_ADDR 0x10000
+#define SHIP_SPRITE_BASE_ADDR 0x14000
+#define SHIP_SPRITE_FRAME_BYTES 512
+#define SPRITE_BASE_ADDR 0x1FC08
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
 
@@ -44,14 +50,7 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
   cbm_k_load(m, base_addr);
 }
 
-unsigned long map_base_addr           = 0x00000;
-unsigned long tiles_base_addr         = 0x10000;
-unsigned long ship_sprite_base_addr   = 0x14000;
-unsigned int  ship_sprite_frame_bytes = 512;
 unsigned long ship_sprite_frame_addr  = 0;
-
-unsigned long ship_sprite_attr_addr = 0x1FC08;  // sprite 1
-
 unsigned int x = 160;
 unsigned int y = 100;
 
@@ -64,19 +63,19 @@ void main() {
 
   // Our default Tile and Map Base addresses
 
-  load_into_vera_ignore_header("map0.bin", map_base_addr);
-  load_into_vera_ignore_header("tiles.bin", tiles_base_addr);
-  load_into_vera_ignore_header("sprite0.bin", ship_sprite_base_addr);
+  load_into_vera_ignore_header("map0.bin", MAP_BASE_ADDR);
+  load_into_vera_ignore_header("tiles.bin", TILES_BASE_ADDR);
+  load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
 
   VERA.display.video |= 0b01100000;    // activate layer 1 & sprites
   VERA.display.hscale = 64;
   VERA.display.vscale = 64;
 
   VERA.layer1.config = 0b11100010;
-  VERA.layer1.mapbase = (map_base_addr >> 9) & 0xFF;  // top eight bits of 17-bit address
+  VERA.layer1.mapbase = (MAP_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address
 
   VERA.layer1.tilebase =
-    (tiles_base_addr >> 9) // top six bits of 17-bit address 
+    (TILES_BASE_ADDR >> 9) // top six bits of 17-bit address 
     | 0b11;                 // tile height / width = 16px
 
   VERA.layer1.hscroll = 0;
@@ -84,14 +83,16 @@ void main() {
 
   while (true) {
 
-    bearing_deg = (bearing_deg + bearing_speed_deg_per_frame) % 360;
-    bearing_frame = bearing_deg / (DEGREES_PER_FACING);
+    // bearing_deg = (bearing_deg + bearing_speed_deg_per_frame) % 360;
+    // bearing_frame = bearing_deg / (DEGREES_PER_FACING);
+    
+    bearing_frame = (bearing_frame + 1) % NUM_SHIP_BEARINGS;
 
-    ship_sprite_frame_addr = ship_sprite_base_addr + (ship_sprite_frame_bytes * bearing_frame);
+    ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
     // Point to Sprite 1
-    VERA.address = ship_sprite_attr_addr;
-    VERA.address_hi = ship_sprite_attr_addr >> 16;
+    VERA.address = SPRITE_BASE_ADDR;
+    VERA.address_hi = SPRITE_BASE_ADDR >> 16;
     // Set the Increment Mode, turn on bit 4
     VERA.address_hi |= 0b10000;
 
