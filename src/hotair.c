@@ -11,11 +11,11 @@
 #define MAP_BASE_ADDR 0x00000
 #define TILES_BASE_ADDR 0x10000
 #define SHIP_SPRITE_BASE_ADDR 0x14000
+#define SHIP_SPRITE_SIZE_PIXELS 32
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define SPRITE_BASE_ADDR 0x1FC08
 
 // position is an unsigned 16-bit in 128ths that is bit-shifted 7x to translate into px/frame
-
 // velocity compent is a signed 16-bit int with 128ths that is bit-shifted 7x to translate into px/frame
 // engine thrust in an unsigned char in 128ths
 // angular components are signed chars in 128ths
@@ -59,7 +59,9 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
 
 unsigned long ship_sprite_frame_addr  = 0;
 unsigned short x = 160;
+unsigned short ship_sprite_x_px = 0;
 unsigned short y = 100;
+unsigned short ship_sprite_y_px = 0;
 
 // bearing is a signed 16-bit in in 64ths  (signed only to detect wraparounds)
 signed short bearing_64th_degs = 0;
@@ -67,7 +69,7 @@ unsigned short bearing_deg      = 0;
 unsigned char bearing_frame     = 0;
 
 // turn rate is an unsigned 8-bit number in 64ths
-unsigned short turn_rate_64th_degs_per_frame = 256;
+unsigned short turn_rate_64th_degs_per_frame = 180;
 
 unsigned char joy;
 
@@ -115,6 +117,10 @@ void main() {
     bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
     ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
+    // adjust X/Y to put the sprite at the center of the screen
+    ship_sprite_x_px = x - SHIP_SPRITE_SIZE_PIXELS / 2; 
+    ship_sprite_y_px = y - SHIP_SPRITE_SIZE_PIXELS / 2; 
+
     // Point to Sprite 1
     VERA.address = SPRITE_BASE_ADDR;
     VERA.address_hi = SPRITE_BASE_ADDR >> 16;
@@ -126,10 +132,10 @@ void main() {
     VERA.data0 = ship_sprite_frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
     VERA.data0 = 0b10001111 & ship_sprite_frame_addr >> 13;
-    VERA.data0 = x; 
-    VERA.data0 = x >> 8;
-    VERA.data0 = y; 
-    VERA.data0 = y >> 8;
+    VERA.data0 = ship_sprite_x_px; 
+    VERA.data0 = ship_sprite_x_px >> 8;
+    VERA.data0 = ship_sprite_y_px; 
+    VERA.data0 = ship_sprite_y_px >> 8;
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
