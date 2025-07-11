@@ -6,7 +6,7 @@ filename = "map0.bin"
 b = bytearray()
 b += bytes([2,3])
 
-colors=[0,11,9,6]
+colors=[0,11,9]
 
 for row in range(128):
   for col in range(256):
