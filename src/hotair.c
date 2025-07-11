@@ -3,15 +3,22 @@
 #include <string.h>
 #include <stdbool.h>
 #include "wait.h"
+#include <joystick.h>
 
 #define NUM_SHIP_BEARINGS 32
-#define DEGREES_PER_FACING 360/NUM_SHIP_FACINGS
+#define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
 
 #define MAP_BASE_ADDR 0x00000
 #define TILES_BASE_ADDR 0x10000
 #define SHIP_SPRITE_BASE_ADDR 0x14000
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define SPRITE_BASE_ADDR 0x1FC08
+
+// position is an unsigned 16-bit in 128ths that is bit-shifted 7x to translate into px/frame
+
+// velocity compent is a signed 16-bit int with 128ths that is bit-shifted 7x to translate into px/frame
+// engine thrust in an unsigned char in 128ths
+// angular components are signed chars in 128ths
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
 
@@ -51,13 +58,18 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
 }
 
 unsigned long ship_sprite_frame_addr  = 0;
-unsigned int x = 160;
-unsigned int y = 100;
+unsigned short x = 160;
+unsigned short y = 100;
 
-unsigned int  bearing_deg   = 0;
-unsigned char bearing_frame = 0;
+// bearing is a signed 16-bit in in 64ths  (signed only to detect wraparounds)
+signed short bearing_64th_degs = 0;
+unsigned short bearing_deg      = 0;
+unsigned char bearing_frame     = 0;
 
-signed char bearing_speed_deg_per_frame = 1;
+// turn rate is an unsigned 8-bit number in 64ths
+unsigned short turn_rate_64th_degs_per_frame = 256;
+
+unsigned char joy;
 
 void main() {
 
@@ -81,13 +93,26 @@ void main() {
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 
+  joy_install(cx16_std_joy);
+
   while (true) {
 
-    // bearing_deg = (bearing_deg + bearing_speed_deg_per_frame) % 360;
-    // bearing_frame = bearing_deg / (DEGREES_PER_FACING);
-    
-    bearing_frame = (bearing_frame + 1) % NUM_SHIP_BEARINGS;
+    joy = joy_read(0);
 
+    if (JOY_LEFT(joy)) {
+      bearing_64th_degs = bearing_64th_degs - turn_rate_64th_degs_per_frame;
+      if (bearing_64th_degs < 0) {
+        bearing_64th_degs = 360 * 64 + bearing_64th_degs;
+      }
+    } else if (JOY_RIGHT(joy)) {
+      bearing_64th_degs = bearing_64th_degs + turn_rate_64th_degs_per_frame;
+      if (bearing_64th_degs > 359 * 64) {
+        bearing_64th_degs = bearing_64th_degs - 360*64;
+      }
+    }
+
+    bearing_deg = bearing_64th_degs >> 6;
+    bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
     ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
     // Point to Sprite 1
