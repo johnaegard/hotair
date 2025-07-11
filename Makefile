@@ -1,7 +1,13 @@
 CC=cl65
 
-make:
-	$(CC) -O -o HOTAIR.PRG -t cx16 src/*.c
+hotair:
+	$(CC) -O -o HOTAIR.PRG -t cx16 src/hotair.c src/wait.c
 
-run: make
+run: hotair
 	../x16emu/x16emu -prg HOTAIR.PRG -run -debug
+
+bitshift:
+	$(CC) -O -o BITSHIFT.PRG -t cx16 src/bitshift.c
+
+runbitshift: bitshift
+	../x16emu/x16emu -prg BITSHIFT.PRG -run -debug
