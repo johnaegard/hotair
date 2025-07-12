@@ -2,8 +2,10 @@
 #include <cbm.h>
 #include <string.h>
 #include <stdbool.h>
-#include "wait.h"
 #include <joystick.h>
+#include <stdio.h>
+
+#include "wait.h"
 
 #define NUM_SHIP_BEARINGS 32
 #define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
@@ -17,7 +19,7 @@
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define SPRITE_BASE_ADDR 0x1FC08
-#define HI_RES false
+#define HI_RES true
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
 
@@ -55,43 +57,6 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
 }
-
-unsigned short tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
-unsigned short tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
-
-// position is an unsigned 32-bit in 64ths of a pixel that is >> 6 to translate into px/frame
-// velocity component is a signed 16-bit in 64ths of a pixel that is >> 6 to translate into px/frame
-// engine thrust in an unsigned 16-bit in 64ths
-// angular components are signed chars in 64ths
-
-unsigned int   ship_x_64th_px    = 64 * MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
-unsigned int   ship_y_64th_px    = 64 * MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
-unsigned short ship_x_px;
-unsigned short ship_y_px;
-
-signed short   ship_vx_64th_px   = 0; 
-signed short   ship_vy_64th_px   = 0; 
-unsigned short thrust_64th_px    = 1; 
-
-unsigned short ship_sprite_x_px = 0;
-unsigned short ship_sprite_y_px = 0;
-
-// bearing is a signed 16-bit in in 64ths  (signed only to detect wraparounds)
-signed short   bearing_64th_degs      = 0;
-unsigned short bearing_deg            = 0;
-unsigned char  bearing_frame          = 0;
-unsigned long  ship_sprite_frame_addr = 0;
-
-signed char x_comp_for_bearing_frame[32] = {0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12,
-                                             0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12};
-signed char y_comp_for_bearing_frame[32] = {-64,-63,-59,-53,-45,-36,-24,-12,0,12,24,36,45,53,59,63,64,
-                                             63,59,53,45,36,24,12,0,-12,-24,-36,-45,-53,-59,-63};
-
-// turn rate is an unsigned 8-bit number in 64ths
-unsigned short turn_rate_64th_degs_per_frame = 380;
-
-unsigned char joy;
-
 void vera_setup() {
   load_into_vera_ignore_header("map0.bin", MAP_BASE_ADDR);
   load_into_vera_ignore_header("tiles.bin", TILES_BASE_ADDR);
@@ -102,14 +67,68 @@ void vera_setup() {
   VERA.display.vscale = HI_RES ? 128 : 64;
 
   VERA.layer1.config = 0b11100010;
-  VERA.layer1.mapbase = (MAP_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address
+  VERA.layer1.mapbase = (MAP_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 
 
   VERA.layer1.tilebase =
     (TILES_BASE_ADDR >> 9) // top six bits of 17-bit address 
     | 0b11;                 // tile height / width = 16px
 }
 
+// sizeof(char) = 1
+// sizeof(int,short) = 2
+// sizeof(long) = 4
+
+unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
+unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
+
+// position is an unsigned 32-bit in 64ths of a pixel that is >> 6 to translate into px/frame
+// velocity component is a signed 16-bit in 64ths of a pixel that is >> 6 to translate into px/frame
+// engine thrust in an unsigned 16-bit in 64ths
+// angular components are signed chars in 64ths
+
+unsigned long ship_x_64th_px = 64 * MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
+unsigned long ship_y_64th_px = 64 * MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
+unsigned int  ship_x_px;
+unsigned int  ship_y_px;
+
+signed int   ship_vx_64th_px   = 0; 
+signed int   ship_vy_64th_px   = 0; 
+unsigned int thrust_64th_px    = 1; 
+
+unsigned int ship_sprite_x_px = 0;
+unsigned int ship_sprite_y_px = 0;
+
+// bearing is a signed 16-bit in in 64ths  (signed only to detect wraparounds)
+signed int   bearing_64th_degs      = 0;
+unsigned int bearing_deg            = 0;
+unsigned char  bearing_frame          = 0;
+unsigned long  ship_sprite_frame_addr = 0;
+
+// signed int x_comp_for_bearing_frame[32] = {0,6393,12540,18205,23170,27246,30274,32138,
+//                                            32767,32138,30274,27246,23170,18205,12540,6393,
+//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138,
+//                                            -32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393};
+
+// signed int x_comp_for_bearing_frame[32] = {-32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393,
+//                                            0,6393,12540,18205,23170,27246,30274,32138,
+//                                            32767,32138,30274,27246,23170,18205,12540,6393,
+//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138};
+                                          
+signed char x_comp_for_bearing_frame[32] = {0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12,
+                                             0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12};
+signed char y_comp_for_bearing_frame[32] = {-64,-63,-59,-53,-45,-36,-24,-12,0,12,24,36,45,53,59,63,64,
+                                             63,59,53,45,36,24,12,0,-12,-24,-36,-45,-53,-59,-63};
+
+// turn rate is an unsigned 8-bit number in 64ths
+unsigned int turn_rate_64th_degs_per_frame = 380;
+
+unsigned char joy;
+
 void main() {
+
+  FILE *file = fopen("HOTAIR.LOG", "w");
+  fprintf(file, "ship_x_64th_px=%d,ship_y_64th_px=%d\n",ship_x_64th_px, ship_y_64th_px);
+  fclose(file);
 
   vera_setup();
   joy_install(cx16_std_joy);
@@ -140,12 +159,9 @@ void main() {
     ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
     if(JOY_UP(joy)) {
-      ship_vx_64th_px = ship_vx_64th_px + x_comp_for_bearing_frame[bearing_frame];
-      ship_vy_64th_px = ship_vy_64th_px + y_comp_for_bearing_frame[bearing_frame];
+      ship_vx_64th_px = ship_vx_64th_px + x_comp_for_bearing_frame[bearing_frame] /8;
+      ship_vy_64th_px = ship_vy_64th_px + y_comp_for_bearing_frame[bearing_frame] /8;
     }
-
-    // ship_vx_64th_px = 128;
-    // ship_vy_64th_px = 32;
 
     ship_x_64th_px += ship_vx_64th_px;
     ship_y_64th_px += ship_vy_64th_px;

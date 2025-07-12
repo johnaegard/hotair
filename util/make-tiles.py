@@ -7,6 +7,7 @@ def create_full_byte_array():
   for color in range(16):
     fourbit_color_byte = (color << 4) + color; 
     b += bytes( [fourbit_color_byte] * tile_length_bytes )
+    
   return b
 
 def write_to_file(filename):
