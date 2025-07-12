@@ -9,15 +9,17 @@
 #define NUM_SHIP_BEARINGS 72
 #define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
 
-#define MAP_BASE_ADDR 0x00000
+#define MAP0_BASE_ADDR 0x00000
+#define TILES_BASE_ADDR 0x10000
+#define SHIP_SPRITE_BASE_ADDR 0x14000
+#define SPRITE_BASE_ADDR 0x1FC08
+#define MAP1_BASE_ADDR 0x1D000
+
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
 #define TILE_SIZE_PX 16 
-#define TILES_BASE_ADDR 0x10000
-#define SHIP_SPRITE_BASE_ADDR 0x14000
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define SHIP_SPRITE_FRAME_BYTES 512
-#define SPRITE_BASE_ADDR 0x1FC08
 #define HI_RES false
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
@@ -57,20 +59,32 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
   cbm_k_load(m, base_addr);
 }
 void vera_setup() {
-  load_into_vera_ignore_header("map0.bin", MAP_BASE_ADDR);
+  load_into_vera_ignore_header("map0.bin", MAP0_BASE_ADDR);
   load_into_vera_ignore_header("tiles.bin", TILES_BASE_ADDR);
   load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
+  load_into_vera_ignore_header("map1.bin", MAP1_BASE_ADDR);
 
-  VERA.display.video |= 0b01100000;    // activate layer 1 & sprites
+  VERA.display.video  = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
   VERA.display.vscale = HI_RES ? 128 : 64;
 
-  VERA.layer1.config = 0b11100010;
-  VERA.layer1.mapbase = (MAP_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 
+  VERA.layer0.config = 0b11100010;
+  VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
-  VERA.layer1.tilebase =
-    (TILES_BASE_ADDR >> 9) // top six bits of 17-bit address 
+  VERA.layer0.tilebase =
+    (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
     | 0b11;                 // tile height / width = 16px
+
+  VERA.layer1.config  = 0b00010000;  // 32x64 16-color tiles
+  VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9) & 0b11111100;  // top eight bits of 17-bit address and 8x8
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+
+  // VERA.layer1.tilebase =
+  //   (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
+  //   | 0b11;                 // tile height / width = 16px
+
+
 }
 
 // sizeof(char) = 1
@@ -83,16 +97,7 @@ unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 // 
 // THRUST
 //
-signed char thrust_divisor = 32;
-// signed int x_thrust_for_bearing_frame[32] = {0,6393,12540,18205,23170,27246,30274,32138,
-//                                            32767,32138,30274,27246,23170,18205,12540,6393,
-//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138,
-//                                            -32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393};
-
-// signed int y_thrust_for_bearing_frame[32] = {-32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393,
-//                                            0,6393,12540,18205,23170,27246,30274,32138,
-//                                            32767,32138,30274,27246,23170,18205,12540,6393,
-//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138};
+signed char thrust_divisor = 16;
 
 signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    0,2856,5690,8481,11207,13848,16384,18795,21063,
@@ -117,8 +122,8 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
 //
 // VELOCITY
 //
-signed long  ship_vx_fpx = 0; 
-signed long  ship_vy_fpx = 0; 
+signed long ship_vx_fpx = 0; 
+signed long ship_vy_fpx = 0; 
 
 //
 // POSITION
@@ -151,7 +156,7 @@ void main() {
   vera_setup();
   joy_install(cx16_std_joy);
 
-  ship_screen_x_px = HI_RES ? 320 : 160;
+  ship_screen_x_px = HI_RES ? 240 : 120;
   ship_screen_y_px = HI_RES ? 240 : 120;
   ship_screen_x_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
   ship_screen_y_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
@@ -187,8 +192,8 @@ void main() {
     ship_x_px = ship_x_fpx >> 16;
     ship_y_px = ship_y_fpx >> 16;
 
-    VERA.layer1.hscroll = ship_x_px - (HI_RES ? 320 : 160);
-    VERA.layer1.vscroll = ship_y_px - (HI_RES ? 240 : 120);
+    VERA.layer0.hscroll = ship_x_px - (HI_RES ? 240 : 120);
+    VERA.layer0.vscroll = ship_y_px - (HI_RES ? 240 : 120);
 
     // Point to Sprite 1
     VERA.address = SPRITE_BASE_ADDR;
