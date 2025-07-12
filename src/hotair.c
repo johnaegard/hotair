@@ -6,7 +6,7 @@
 
 #include "wait.h"
 
-#define NUM_SHIP_BEARINGS 32
+#define NUM_SHIP_BEARINGS 72
 #define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
 
 #define MAP_BASE_ADDR 0x00000
@@ -18,7 +18,7 @@
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define SPRITE_BASE_ADDR 0x1FC08
-#define HI_RES true
+#define HI_RES false
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
 
@@ -80,41 +80,69 @@ void vera_setup() {
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 
+// 
+// THRUST
+//
+signed char thrust_divisor = 32;
+// signed int x_thrust_for_bearing_frame[32] = {0,6393,12540,18205,23170,27246,30274,32138,
+//                                            32767,32138,30274,27246,23170,18205,12540,6393,
+//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138,
+//                                            -32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393};
+
+// signed int y_thrust_for_bearing_frame[32] = {-32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393,
+//                                            0,6393,12540,18205,23170,27246,30274,32138,
+//                                            32767,32138,30274,27246,23170,18205,12540,6393,
+//                                            0,-6393,-12540,-18205,-23170,-27246,-30274,-32138};
+
+signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
+   0,2856,5690,8481,11207,13848,16384,18795,21063,
+   23170,25102,26842,28378,29698,30792,31651,32270,32643,
+   32767,32643,32270,31651,30792,29698,28378,26842,25102,
+   23170,21063,18795,16384,13848,11207,8481,5690,2856,
+   0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
+   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643,
+   -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
+   -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856};
+
+signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
+   -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
+   -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856,
+   0,2856,5690,8481,11207,13848,16384,18795,21063,
+   23170,25102,26842,28378,29698,30792,31651,32270,32643,
+   32767,32643,32270,31651,30792,29698,28378,26842,25102,
+   23170,21063,18795,16384,13848,11207,8481,5690,2856,
+   0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
+   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643};  
+
+//
+// VELOCITY
+//
+signed long  ship_vx_fpx = 0; 
+signed long  ship_vy_fpx = 0; 
+
+//
+// POSITION
+//
 unsigned long ship_x_fpx = 32767 * MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned long ship_y_fpx = 32767 * MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 unsigned int  ship_x_px;
 unsigned int  ship_y_px;
 
-signed long   ship_vx_fpx = 0; 
-signed long   ship_vy_fpx = 0; 
-unsigned int thrust_fpx  = 1; 
+//
+// BEARING AND TURN RATE
+//
+signed int   bearing_fdegs      = 0;
+unsigned int bearing_deg        = 0;
+unsigned int turn_rate_fdegs_pf = 96;
 
-unsigned int ship_sprite_x_px = 0;
-unsigned int ship_sprite_y_px = 0;
-
-// bearing is a signed 16-bit in in 64ths  (signed only to detect wraparounds)
-signed int    bearing_64th_degs      = 0;
-unsigned int  bearing_deg            = 0;
+//
+// SPRITE FRAME
+//
 unsigned char bearing_frame          = 0;
 unsigned long ship_sprite_frame_addr = 0;
 
-signed int x_comp_for_bearing_frame[32] = {0,6393,12540,18205,23170,27246,30274,32138,
-                                           32767,32138,30274,27246,23170,18205,12540,6393,
-                                           0,-6393,-12540,-18205,-23170,-27246,-30274,-32138,
-                                           -32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393};
-
-signed int y_comp_for_bearing_frame[32] = {-32767,-32138,-30274,-27246,-23170,-18205,-12540,-6393,
-                                           0,6393,12540,18205,23170,27246,30274,32138,
-                                           32767,32138,30274,27246,23170,18205,12540,6393,
-                                           0,-6393,-12540,-18205,-23170,-27246,-30274,-32138};
-                                          
-// signed char x_comp_for_bearing_frame[32] = {0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12,
-//                                              0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12};
-// signed char y_comp_for_bearing_frame[32] = {-64,-63,-59,-53,-45,-36,-24,-12,0,12,24,36,45,53,59,63,64,
-//                                              63,59,53,45,36,24,12,0,-12,-24,-36,-45,-53,-59,-63};
-
-// turn rate is an unsigned 8-bit number in 64ths
-unsigned int turn_rate_64th_degs_per_frame = 380;
+unsigned int ship_screen_x_px = 0;
+unsigned int ship_screen_y_px = 0;
 
 unsigned char joy;
 
@@ -123,34 +151,34 @@ void main() {
   vera_setup();
   joy_install(cx16_std_joy);
 
-  ship_sprite_x_px = HI_RES ? 320 : 160;
-  ship_sprite_y_px = HI_RES ? 240 : 120;
-  ship_sprite_x_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
-  ship_sprite_y_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
+  ship_screen_x_px = HI_RES ? 320 : 160;
+  ship_screen_y_px = HI_RES ? 240 : 120;
+  ship_screen_x_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
+  ship_screen_y_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
 
   while (true) {
 
     joy = joy_read(0);
 
     if (JOY_LEFT(joy)) {
-      bearing_64th_degs = bearing_64th_degs - turn_rate_64th_degs_per_frame;
-      if (bearing_64th_degs < 0) {
-        bearing_64th_degs = 360 * 64 + bearing_64th_degs;
+      bearing_fdegs = bearing_fdegs - turn_rate_fdegs_pf;
+      if (bearing_fdegs < 0) {
+        bearing_fdegs = 359 * 64 + bearing_fdegs;
       }
     } else if (JOY_RIGHT(joy)) {
-      bearing_64th_degs = bearing_64th_degs + turn_rate_64th_degs_per_frame;
-      if (bearing_64th_degs > 359 * 64) {
-        bearing_64th_degs = bearing_64th_degs - 360*64;
+      bearing_fdegs = bearing_fdegs + turn_rate_fdegs_pf;
+      if (bearing_fdegs > 359 * 64) {
+        bearing_fdegs = bearing_fdegs - 359*64;
       }
     }
 
-    bearing_deg = bearing_64th_degs >> 6;
+    bearing_deg   = bearing_fdegs >> 6;
     bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
     ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
     if(JOY_UP(joy)) {
-      ship_vx_fpx = ship_vx_fpx + x_comp_for_bearing_frame[bearing_frame];
-      ship_vy_fpx = ship_vy_fpx + y_comp_for_bearing_frame[bearing_frame];
+      ship_vx_fpx = ship_vx_fpx + x_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
+      ship_vy_fpx = ship_vy_fpx + y_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
     }
 
     ship_x_fpx += ship_vx_fpx;
@@ -173,15 +201,13 @@ void main() {
     VERA.data0 = ship_sprite_frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
     VERA.data0 = 0b10001111 & ship_sprite_frame_addr >> 13;
-    VERA.data0 = ship_sprite_x_px; 
-    VERA.data0 = ship_sprite_x_px >> 8;
-    VERA.data0 = ship_sprite_y_px; 
-    VERA.data0 = ship_sprite_y_px >> 8;
+    VERA.data0 = ship_screen_x_px; 
+    VERA.data0 = ship_screen_x_px >> 8;
+    VERA.data0 = ship_screen_y_px; 
+    VERA.data0 = ship_screen_y_px >> 8;
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
-
     wait();
-
   }
 
 }
