@@ -11,6 +11,7 @@
 
 #define MAP0_BASE_ADDR 0x00000
 #define TILES_BASE_ADDR 0x10000
+#define CHARSET_BASE_ADDR 0x1F000
 #define SHIP_SPRITE_BASE_ADDR 0x14000
 #define SPRITE_BASE_ADDR 0x1FC08
 #define MAP1_BASE_ADDR 0x1D000
@@ -59,6 +60,14 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
   cbm_k_load(m, base_addr);
 }
 void vera_setup() {
+
+  // petsci upper / gfx
+
+  asm("lda #2");
+  asm("jsr $FF62");
+
+
+
   load_into_vera_ignore_header("map0.bin", MAP0_BASE_ADDR);
   load_into_vera_ignore_header("tiles.bin", TILES_BASE_ADDR);
   load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
@@ -68,22 +77,22 @@ void vera_setup() {
   VERA.display.hscale = HI_RES ? 128 : 64;
   VERA.display.vscale = HI_RES ? 128 : 64;
 
-  VERA.layer0.config = 0b11100010;
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
+    // VERA.layer0.config = 0b11100010;
+  // VERA.layer0.tilebase =
+  //   (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
+  //   | 0b11;                 // tile height / width = 16px
+ 
+  VERA.layer0.config = 0b11100000;
   VERA.layer0.tilebase =
-    (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
-    | 0b11;                 // tile height / width = 16px
+     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
+     & 0b11111100;             // tile height / width = 8px
 
   VERA.layer1.config  = 0b00010000;  // 32x64 16-color tiles
   VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9) & 0b11111100;  // top eight bits of 17-bit address and 8x8
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
-
-  // VERA.layer1.tilebase =
-  //   (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
-  //   | 0b11;                 // tile height / width = 16px
-
 
 }
 
@@ -124,6 +133,9 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
 //
 signed long ship_vx_fpx = 0; 
 signed long ship_vy_fpx = 0; 
+signed char friction_divisor = 40;
+signed long ship_vx_friction = 0;
+signed long ship_vy_friction = 0;
 
 //
 // POSITION
@@ -138,7 +150,7 @@ unsigned int  ship_y_px;
 //
 signed int   bearing_fdegs      = 0;
 unsigned int bearing_deg        = 0;
-unsigned int turn_rate_fdegs_pf = 96;
+unsigned int turn_rate_fdegs_pf = 80;
 
 //
 // SPRITE FRAME
@@ -185,6 +197,9 @@ void main() {
       ship_vx_fpx = ship_vx_fpx + x_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
       ship_vy_fpx = ship_vy_fpx + y_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
     }
+
+    ship_vx_fpx -= ship_vx_fpx / friction_divisor;
+    ship_vy_fpx -= ship_vy_fpx / friction_divisor;
 
     ship_x_fpx += ship_vx_fpx;
     ship_y_fpx += ship_vy_fpx;

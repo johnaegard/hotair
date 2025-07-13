@@ -2,17 +2,23 @@
 
 import random
 
-b = bytearray()
-b += bytes([2,3])
+def random_petscii():
+  b = bytearray()
+  b += bytes([2,3])
 
-colors=[0,11,9]
+  colors=[0,11,9]
 
-for row in range(256):
-  for col in range(128):
-    # tile = 0 if (row < 4 or row > 251 or col < 4 or col > 123) else colors[random.randint(0,len(colors)-1)] 
-    tile = 0 if (row < 4 or row > 251 or col < 4 or col > 123) else int(row / 16)  
-    b += bytes([tile,0])
+  for row in range(256):
+    for col in range(128):
+      # tile = 0 if (row < 4 or row > 251 or col < 4 or col > 123) else colors[random.randint(0,len(colors)-1)] 
+      # tile = 0 if (row < 4 or row > 251 or col < 4 or col > 123) else int(row / 16)  
+      # b += bytes([tile,0])
+      tile = random.randint(0x40,0x7f)
+      color = ((int(row/16) + int(col/16)) % 15 + 1);
+      b += bytes([tile,color])
+  return b    
 
+b = random_petscii()
 filename="map0.bin"
 with open(filename, 'wb') as f:
   f.write(b)
@@ -24,7 +30,7 @@ b1 += bytes([2,3])
 for row in range(32):
   for col in range(64):
     color = 0x00 if col <30 else 0x61
-    char =  0x60 
+    char =  0x65 if col <30 else (0x30 + col%10) 
     b1 += bytes([char,color])
 
 filename1="map1.bin"

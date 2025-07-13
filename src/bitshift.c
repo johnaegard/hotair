@@ -1,8 +1,13 @@
 #include <stdio.h>
 
-void main() {
+signed char foo = -65;
+unsigned char charset = 2;
 
-  signed char foo = -65;
+void main() {
+   
+  asm("lda #2");
+  asm("jsr $FF62");
+
   printf("%d\n",foo);
 
   printf("%d\n",foo >> 6);
