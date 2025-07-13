@@ -10,11 +10,11 @@
 #define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
 
 #define MAP0_BASE_ADDR 0x00000
-#define TILES_BASE_ADDR 0x10000
+#define SHIP_SPRITE_BASE_ADDR 0x10000
+#define MAP1_BASE_ADDR 0x12800
+#define NEEDLE_SPRITE_BASE_ADDR 0x13800
 #define CHARSET_BASE_ADDR 0x1F000
-#define SHIP_SPRITE_BASE_ADDR 0x14000
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
-#define MAP1_BASE_ADDR 0x1D000
 
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
@@ -22,6 +22,8 @@
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define HI_RES false
+#define NEEDLE_SPRITE_X_PX 280
+#define NEEDLE_SPRITE_Y_PX 200
 
 void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
 
@@ -66,12 +68,10 @@ void vera_setup() {
   asm("lda #2");
   asm("jsr $FF62");
 
-
-
   load_into_vera_ignore_header("map0.bin", MAP0_BASE_ADDR);
-  load_into_vera_ignore_header("tiles.bin", TILES_BASE_ADDR);
   load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
   load_into_vera_ignore_header("map1.bin", MAP1_BASE_ADDR);
+  load_into_vera_ignore_header("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR);
 
   VERA.display.video  = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -79,11 +79,6 @@ void vera_setup() {
 
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
-    // VERA.layer0.config = 0b11100010;
-  // VERA.layer0.tilebase =
-  //   (TILES_BASE_ADDR >> 9)  // top six bits of 17-bit address 
-  //   | 0b11;                 // tile height / width = 16px
- 
   VERA.layer0.config = 0b11100000;
   VERA.layer0.tilebase =
      (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
@@ -93,12 +88,7 @@ void vera_setup() {
   VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9) & 0b11111100;  // top eight bits of 17-bit address and 8x8
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
-
 }
-
-// sizeof(char) = 1
-// sizeof(int,short) = 2
-// sizeof(long) = 4
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -106,7 +96,7 @@ unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 // 
 // THRUST
 //
-signed char thrust_divisor = 16;
+signed char thrust_divisor = 48;
 
 signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    0,2856,5690,8481,11207,13848,16384,18795,21063,
@@ -135,7 +125,7 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
 //
 signed long ship_vx_fpx = 0; 
 signed long ship_vy_fpx = 0; 
-signed char friction_divisor = 40;
+signed char friction_divisor = 80;
 signed long ship_vx_friction = 0;
 signed long ship_vy_friction = 0;
 
@@ -160,6 +150,7 @@ unsigned int turn_rate_fdegs_pf = 80;
 unsigned char bearing_frame          = 0;
 unsigned long ship_sprite_frame_addr = 0;
 unsigned char ship_sprite_flips;
+unsigned char wind_indicator_frame ;
 
 unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
@@ -249,6 +240,21 @@ void main() {
     VERA.data0 = ship_screen_y_px >> 8;
     VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
+
+    wind_indicator_frame = bearing_frame % 7;
+    VERA.data0 = NEEDLE_SPRITE_BASE_ADDR + wind_indicator_frame >> 5;
+    // 16 color mode, and graphic address bits 16:13
+    VERA.data0 = 0b10001111 & NEEDLE_SPRITE_BASE_ADDR >> 13;
+    VERA.data0 = NEEDLE_SPRITE_X_PX; 
+    VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
+    VERA.data0 = NEEDLE_SPRITE_Y_PX; 
+    VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
+    VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b10100000; // 32x32 pixel image
+
+
+
+
     wait();
   }
 

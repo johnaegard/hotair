@@ -29,8 +29,28 @@ b1=bytearray()
 b1 += bytes([2,3])
 for row in range(32):
   for col in range(64):
-    color = 0x00 if col <30 else 0x61
-    char =  0x65 if col <30 else (0x30 + col%10) 
+    color = 0x01 #if col <30 else 0xC1
+    if col == 30:
+      if row == 0:
+        char = 0x4f
+      elif row == 29:
+        char = 0x4c;
+      else:
+        char = 0x74
+    elif col == 39:
+      if row == 0:
+        char = 0x50
+      elif row == 29:
+        char = 0x7a;
+      else:
+        char = 0x6a;
+    elif row == 0 and col >= 31 and col <= 38:
+        char = 0x77;
+    elif row == 29 and col >= 31 and col <= 38:
+        char = 0x6f;
+    else:
+      char=0x20;
+
     b1 += bytes([char,color])
 
 filename1="map1.bin"
