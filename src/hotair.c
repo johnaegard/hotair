@@ -13,7 +13,7 @@
 #define TILES_BASE_ADDR 0x10000
 #define CHARSET_BASE_ADDR 0x1F000
 #define SHIP_SPRITE_BASE_ADDR 0x14000
-#define SPRITE_BASE_ADDR 0x1FC08
+#define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define MAP1_BASE_ADDR 0x1D000
 
 #define MAP_WIDTH_TILES 128
@@ -126,7 +126,9 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    32767,32643,32270,31651,30792,29698,28378,26842,25102,
    23170,21063,18795,16384,13848,11207,8481,5690,2856,
    0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
-   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643};  
+   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643};
+
+
 
 //
 // VELOCITY
@@ -157,6 +159,7 @@ unsigned int turn_rate_fdegs_pf = 80;
 //
 unsigned char bearing_frame          = 0;
 unsigned long ship_sprite_frame_addr = 0;
+unsigned char ship_sprite_flips;
 
 unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
@@ -191,7 +194,6 @@ void main() {
 
     bearing_deg   = bearing_fdegs >> 6;
     bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
-    ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
 
     if(JOY_UP(joy)) {
       ship_vx_fpx = ship_vx_fpx + x_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
@@ -211,10 +213,30 @@ void main() {
     VERA.layer0.vscroll = ship_y_px - (HI_RES ? 240 : 120);
 
     // Point to Sprite 1
-    VERA.address = SPRITE_BASE_ADDR;
-    VERA.address_hi = SPRITE_BASE_ADDR >> 16;
+    VERA.address = SPRITE_ATTR_BASE_ADDR;
+    VERA.address_hi = SPRITE_ATTR_BASE_ADDR >> 16;
     // Set the Increment Mode, turn on bit 4
     VERA.address_hi |= 0b10000;
+
+    if (bearing_frame >= 0 && bearing_frame <= 18) {
+      ship_sprite_flips = 0b00;
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
+    }
+    else if (bearing_frame>=19 && bearing_frame <=36) {
+      ship_sprite_flips = 0b10;
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
+        + (SHIP_SPRITE_FRAME_BYTES * (18 - (bearing_frame -18)));
+    }
+    else if (bearing_frame>=37 && bearing_frame <=54) {
+      ship_sprite_flips = 0b11;
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
+        + (SHIP_SPRITE_FRAME_BYTES * ((bearing_frame -36)));
+    }
+    else if (bearing_frame>=55 && bearing_frame <=71) {
+      ship_sprite_flips = 0b01;
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
+        + (SHIP_SPRITE_FRAME_BYTES * (18 - (bearing_frame -54)));
+    }
 
     // Configure Sprite 1
     // Graphic address bits 12:5
@@ -225,7 +247,7 @@ void main() {
     VERA.data0 = ship_screen_x_px >> 8;
     VERA.data0 = ship_screen_y_px; 
     VERA.data0 = ship_screen_y_px >> 8;
-    VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
     wait();
   }
