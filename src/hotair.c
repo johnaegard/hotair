@@ -13,6 +13,9 @@
 #define SHIP_SPRITE_BASE_ADDR 0x10000
 #define MAP1_BASE_ADDR 0x12800
 #define NEEDLE_SPRITE_BASE_ADDR 0x13800
+#define NEEDLE_SPRITE_FRAME_BYTES 512
+#define CIRCLE_SPRITE_BASE_ADDR 0x14600
+
 #define CHARSET_BASE_ADDR 0x1F000
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
 
@@ -72,8 +75,10 @@ void vera_setup() {
   load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
   load_into_vera_ignore_header("map1.bin", MAP1_BASE_ADDR);
   load_into_vera_ignore_header("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR);
+  load_into_vera_ignore_header("circle.bin", CIRCLE_SPRITE_BASE_ADDR);
 
-  VERA.display.video  = 0b01110001;    // activate layers & sprites
+
+  VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
   VERA.display.vscale = HI_RES ? 128 : 64;
 
@@ -81,10 +86,10 @@ void vera_setup() {
 
   VERA.layer0.config = 0b11100000;
   VERA.layer0.tilebase =
-     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
-     & 0b11111100;             // tile height / width = 8px
+    (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
+    & 0b11111100;             // tile height / width = 8px
 
-  VERA.layer1.config  = 0b00010000;  // 32x64 16-color tiles
+  VERA.layer1.config = 0b00010000;  // 32x64 16-color tiles
   VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9) & 0b11111100;  // top eight bits of 17-bit address and 8x8
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
@@ -96,7 +101,7 @@ unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 // 
 // THRUST
 //
-signed char thrust_divisor = 48;
+signed char thrust_divisor = 32;
 
 signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    0,2856,5690,8481,11207,13848,16384,18795,21063,
@@ -106,7 +111,7 @@ signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
    -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643,
    -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
-   -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856};
+   -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856 };
 
 signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
@@ -116,16 +121,14 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    32767,32643,32270,31651,30792,29698,28378,26842,25102,
    23170,21063,18795,16384,13848,11207,8481,5690,2856,
    0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
-   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643};
-
-
+   -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643 };
 
 //
 // VELOCITY
 //
-signed long ship_vx_fpx = 0; 
-signed long ship_vy_fpx = 0; 
-signed char friction_divisor = 80;
+signed long ship_vx_fpx = 0;
+signed long ship_vy_fpx = 0;
+signed int friction_divisor = 255;
 signed long ship_vx_friction = 0;
 signed long ship_vy_friction = 0;
 
@@ -140,22 +143,41 @@ unsigned int  ship_y_px;
 //
 // BEARING AND TURN RATE
 //
-signed int   bearing_fdegs      = 0;
-unsigned int bearing_deg        = 0;
-unsigned int turn_rate_fdegs_pf = 80;
+signed int   bearing_fdegs = 0;
+unsigned int bearing_deg = 0;
+unsigned int turn_rate_fdegs_pf = 240;
 
 //
 // SPRITE FRAME
 //
-unsigned char bearing_frame          = 0;
+unsigned char bearing_frame = 0;
 unsigned long ship_sprite_frame_addr = 0;
 unsigned char ship_sprite_flips;
-unsigned char wind_indicator_frame ;
+unsigned char needle_sprite_frame;
+unsigned long needle_sprite_frame_addr;
 
 unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
 
 unsigned char joy;
+unsigned long frame = 0;
+
+typedef struct {
+  unsigned int flips;
+  unsigned int frame_offset;
+} SpriteFlipper;
+
+SpriteFlipper sprite_flipper;
+
+SpriteFlipper seven_frame_sprite_flipper(
+  unsigned int frame_size_bytes,
+  unsigned char desired_frame) {
+
+  SpriteFlipper retval; 
+
+  return retval;
+
+}
 
 void main() {
 
@@ -176,17 +198,18 @@ void main() {
       if (bearing_fdegs < 0) {
         bearing_fdegs = 359 * 64 + bearing_fdegs;
       }
-    } else if (JOY_RIGHT(joy)) {
+    }
+    else if (JOY_RIGHT(joy)) {
       bearing_fdegs = bearing_fdegs + turn_rate_fdegs_pf;
       if (bearing_fdegs > 359 * 64) {
-        bearing_fdegs = bearing_fdegs - 359*64;
+        bearing_fdegs = bearing_fdegs - 359 * 64;
       }
     }
 
-    bearing_deg   = bearing_fdegs >> 6;
+    bearing_deg = bearing_fdegs >> 6;
     bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
 
-    if(JOY_UP(joy)) {
+    if (JOY_UP(joy)) {
       ship_vx_fpx = ship_vx_fpx + x_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
       ship_vy_fpx = ship_vy_fpx + y_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
     }
@@ -211,22 +234,23 @@ void main() {
 
     if (bearing_frame >= 0 && bearing_frame <= 18) {
       ship_sprite_flips = 0b00;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
+      ship_sprite_frame_addr = 
+        SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
     }
-    else if (bearing_frame>=19 && bearing_frame <=36) {
+    else if (bearing_frame >= 19 && bearing_frame <= 36) {
       ship_sprite_flips = 0b10;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
-        + (SHIP_SPRITE_FRAME_BYTES * (18 - (bearing_frame -18)));
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
+        + (SHIP_SPRITE_FRAME_BYTES * (36 - bearing_frame));
     }
-    else if (bearing_frame>=37 && bearing_frame <=54) {
+    else if (bearing_frame >= 37 && bearing_frame <= 54) {
       ship_sprite_flips = 0b11;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
-        + (SHIP_SPRITE_FRAME_BYTES * ((bearing_frame -36)));
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
+        + (SHIP_SPRITE_FRAME_BYTES * ((bearing_frame - 36)));
     }
-    else if (bearing_frame>=55 && bearing_frame <=71) {
+    else if (bearing_frame >= 55 && bearing_frame <= 71) {
       ship_sprite_flips = 0b01;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR 
-        + (SHIP_SPRITE_FRAME_BYTES * (18 - (bearing_frame -54)));
+      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
+        + (SHIP_SPRITE_FRAME_BYTES * (72 - bearing_frame));
     }
 
     // Configure Sprite 1
@@ -234,27 +258,60 @@ void main() {
     VERA.data0 = ship_sprite_frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
     VERA.data0 = 0b10001111 & ship_sprite_frame_addr >> 13;
-    VERA.data0 = ship_screen_x_px; 
+    VERA.data0 = ship_screen_x_px;
     VERA.data0 = ship_screen_x_px >> 8;
-    VERA.data0 = ship_screen_y_px; 
+    VERA.data0 = ship_screen_y_px;
     VERA.data0 = ship_screen_y_px >> 8;
     VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
-    wind_indicator_frame = bearing_frame % 7;
-    VERA.data0 = NEEDLE_SPRITE_BASE_ADDR + wind_indicator_frame >> 5;
+
+
+    needle_sprite_frame = (frame / 2) %24;
+
+    if (needle_sprite_frame >= 19) {
+      ship_sprite_flips = 0b01;
+      needle_sprite_frame_addr = 
+        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (24-needle_sprite_frame);
+    }
+    else if (needle_sprite_frame >= 13) {
+      ship_sprite_flips = 0b11;
+      needle_sprite_frame_addr = 
+        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (needle_sprite_frame-12);
+    }
+    else if (needle_sprite_frame >= 7) {
+      ship_sprite_flips = 0b10;
+      needle_sprite_frame_addr = 
+        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (12-needle_sprite_frame);
+    }
+    else {
+      ship_sprite_flips = 0b00;
+      needle_sprite_frame_addr = 
+        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * needle_sprite_frame;
+    }
+
+    VERA.data0 = needle_sprite_frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & NEEDLE_SPRITE_BASE_ADDR >> 13;
-    VERA.data0 = NEEDLE_SPRITE_X_PX; 
+    VERA.data0 = 0b10001111 & (needle_sprite_frame_addr >> 13);
+    VERA.data0 = NEEDLE_SPRITE_X_PX;
     VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
-    VERA.data0 = NEEDLE_SPRITE_Y_PX; 
+    VERA.data0 = NEEDLE_SPRITE_Y_PX;
     VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
     VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
+    VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
+    // 16 color mode, and graphic address bits 16:13
+    VERA.data0 = 0b10001111 & (CIRCLE_SPRITE_BASE_ADDR >> 13);
+    VERA.data0 = NEEDLE_SPRITE_X_PX;
+    VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
+    VERA.data0 = NEEDLE_SPRITE_Y_PX;
+    VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
+    VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b10100000; // 32x32 pixel image
 
 
-
+    frame++;
     wait();
   }
 
