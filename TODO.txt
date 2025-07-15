@@ -1,6 +1,7 @@
 * enemy sprite (16-directions)
-* wind
-* wind base
 * flak guns
 * mouse target
 * throttle
+* bombing ground targets with ascii splosions
+* rescue something
+* hold steady against wind while rescuring things

@@ -30,8 +30,12 @@
 #define NEEDLE_SPRITE_X_PX 280
 #define NEEDLE_SPRITE_Y_PX 200
 
-#define WIND_CHANGE_CHANCE 600 // of 32767
+#define WIND_CHANGE_CHANCE 750 // of 32767
 #define WIND_DIRECTIONS 24
+
+#define THRUST_DIVISOR 32
+#define FRICTION_DIVISOR 128
+#define WIND_DIVISOR 256
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -39,9 +43,7 @@ unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 // 
 // THRUST
 //
-signed char thrust_divisor = 32;
-
-signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
+signed int x_comp_for_bearing[NUM_SHIP_BEARINGS] = {
    0,2856,5690,8481,11207,13848,16384,18795,21063,
    23170,25102,26842,28378,29698,30792,31651,32270,32643,
    32767,32643,32270,31651,30792,29698,28378,26842,25102,
@@ -51,7 +53,7 @@ signed int x_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
    -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
    -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856 };
 
-signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
+signed int y_comp_for_bearing[NUM_SHIP_BEARINGS] = {
    -32767,-32643,-32270,-31651,-30792,-29698,-28378,-26842,-25102,
    -23170,-21063,-18795,-16384,-13848,-11207,-8481,-5690,-2856,
    0,2856,5690,8481,11207,13848,16384,18795,21063,
@@ -66,7 +68,6 @@ signed int y_thrust_for_bearing_frame[NUM_SHIP_BEARINGS] = {
 //
 signed long ship_vx_fpx = 0;
 signed long ship_vy_fpx = 0;
-signed int friction_divisor = 128;
 signed long ship_vx_friction = 0;
 signed long ship_vy_friction = 0;
 
@@ -88,18 +89,16 @@ unsigned int turn_rate_fdegs_pf = 240;
 //
 // WIND
 //
-signed char wind_direction =12;
-signed int wind_divisor = 256;
+signed char wind_direction =0;
 
 //
-// SPRITE FRAME
+// PUTTING SPRITES on SCREEN 
 //
 unsigned char bearing_frame = 0;
 unsigned long ship_sprite_frame_addr = 0;
 unsigned char ship_sprite_flips;
 unsigned char needle_sprite_frame;
 unsigned long needle_sprite_frame_addr;
-
 unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
 
@@ -182,11 +181,12 @@ void update_wind() {
 
   // wind_direction = (wind_direction +1) % WIND_DIRECTIONS;
   if (rand() < WIND_CHANGE_CHANCE) {
-    wind_direction = wind_direction + ((rand() % 3)-1) % WIND_DIRECTIONS;
+    wind_direction = wind_direction + ((rand() % 3)-1);
   }
   if (wind_direction < 0) {
     wind_direction = WIND_DIRECTIONS + wind_direction;
   }
+  wind_direction = wind_direction % WIND_DIRECTIONS;
 }
 
 void main() {
@@ -224,21 +224,21 @@ void main() {
     // THRUST
     //
     if (JOY_UP(joy)) {
-      ship_vx_fpx = ship_vx_fpx + x_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
-      ship_vy_fpx = ship_vy_fpx + y_thrust_for_bearing_frame[bearing_frame] / thrust_divisor;
+      ship_vx_fpx = ship_vx_fpx + x_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
+      ship_vy_fpx = ship_vy_fpx + y_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
     }
 
     //
     // FRICTION
     //
-    ship_vx_fpx -= ship_vx_fpx / friction_divisor;
-    ship_vy_fpx -= ship_vy_fpx / friction_divisor;
+    ship_vx_fpx -= ship_vx_fpx / FRICTION_DIVISOR;
+    ship_vy_fpx -= ship_vy_fpx / FRICTION_DIVISOR;
 
     //
     // WIND
     //
-    ship_vx_fpx += x_thrust_for_bearing_frame[wind_direction*3] / wind_divisor;
-    ship_vy_fpx += y_thrust_for_bearing_frame[wind_direction*3] / wind_divisor;
+    ship_vx_fpx += x_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
+    ship_vy_fpx += y_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
 
     ship_x_fpx += ship_vx_fpx;
     ship_y_fpx += ship_vy_fpx;
@@ -332,7 +332,6 @@ void main() {
     VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
-
 
     frame++;
     wait();
