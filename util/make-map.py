@@ -29,8 +29,8 @@ b1=bytearray()
 b1 += bytes([2,3])
 for row in range(32):
   for col in range(64):
-    color = 0x01 #if col <30 else 0xC1
-    if col == 30:
+    color = 0x01 if col <34 else 0xC1
+    if col == 34:
       if row == 0:
         char = 0x4f
       elif row == 29:
@@ -44,14 +44,20 @@ for row in range(32):
         char = 0x7a;
       else:
         char = 0x6a;
-    elif row == 0 and col >= 31 and col <= 38:
+    elif row == 0 and col >= 34 and col <= 38:
         char = 0x77;
-    elif row == 29 and col >= 31 and col <= 38:
+    elif row == 29 and col >= 34 and col <= 38:
         char = 0x6f;
     else:
       char=0x20;
 
     b1 += bytes([char,color])
+
+wind_label_addr = 2 + ( (23*64) + 35) *2;
+print(len(b1));
+color = 0x21;
+b1[wind_label_addr:wind_label_addr+8] = bytes([0x17, color, 0x09, color, 0x0e, color, 0x04, color])
+print(len(b1));
 
 filename1="map1.bin"
 with open(filename1, 'wb') as f:

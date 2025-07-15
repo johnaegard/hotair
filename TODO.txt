@@ -1,7 +1,6 @@
 * enemy sprite (16-directions)
 * wind
-  * wind gauge
-* wind station
+* wind base
 * flak guns
 * mouse target
 * throttle

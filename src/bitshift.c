@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 signed char foo = -65;
 unsigned char charset = 2;
 
 void main() {
    
+  printf("rand:%d", rand());
+
   asm("lda #2");
   asm("jsr $FF62");
 
