@@ -5,3 +5,6 @@
 * bombing ground targets with ascii splosions
 * rescue something
 * hold steady against wind while rescuring things
+* cloud sprites
+* side view window with basket lowering, lifting ppl up.
+* radar

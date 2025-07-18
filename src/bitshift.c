@@ -1,12 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include<time.h>
 
 signed char foo = -65;
 unsigned char charset = 2;
 
 void main() {
-   
-  printf("rand:%d", rand());
+  srand(time(NULL));   
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
+  printf("rand:%u\n", rand());
 
   asm("lda #2");
   asm("jsr $FF62");

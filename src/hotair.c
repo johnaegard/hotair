@@ -8,15 +8,26 @@
 
 #include "wait.h"
 
+  // 0 - File has the 2 byte header, but skip it
+  // 1 - File has the 2 byte header, use it
+  // 2 - File does NOT have the 2 byte header
+
+#define SKIP_2_BYTE_HEADER 0
+#define USE_2_BYTE_HEADER 1
+#define NO_2_BYTE_HEADER 2
+
 #define NUM_SHIP_BEARINGS 72
 #define DEGREES_PER_FACING 360/NUM_SHIP_BEARINGS
 
 #define MAP0_BASE_ADDR 0x00000
 #define SHIP_SPRITE_BASE_ADDR 0x10000
+#define SHIP_SPRITE_FRAME_BYTES 512
 #define MAP1_BASE_ADDR 0x12800
 #define NEEDLE_SPRITE_BASE_ADDR 0x13800
 #define NEEDLE_SPRITE_FRAME_BYTES 512
 #define CIRCLE_SPRITE_BASE_ADDR 0x14600
+#define MONOPLANE_SPRITE_BASE_ADDR 0x14800
+#define MONOPLANE_SPRITE_FRAME_BYTES 128
 
 #define CHARSET_BASE_ADDR 0x1F000
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
@@ -25,17 +36,17 @@
 #define MAP_HEIGHT_TILES 256
 #define TILE_SIZE_PX 16 
 #define SHIP_SPRITE_SIZE_PIXELS 32
-#define SHIP_SPRITE_FRAME_BYTES 512
 #define HI_RES false
 #define NEEDLE_SPRITE_X_PX 280
 #define NEEDLE_SPRITE_Y_PX 200
 
-#define WIND_CHANGE_CHANCE 750 // of 32767
+
+#define WIND_CHANGE_CHANCE 300 // of 32767
 #define WIND_DIRECTIONS 24
 
 #define THRUST_DIVISOR 32
 #define FRICTION_DIVISOR 128
-#define WIND_DIVISOR 256
+#define WIND_DIVISOR 96
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -62,6 +73,11 @@ signed int y_comp_for_bearing[NUM_SHIP_BEARINGS] = {
    23170,21063,18795,16384,13848,11207,8481,5690,2856,
    0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
    -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643 };
+
+char sprite24_flips[24] = {0b00,0b00,0b00,0b00,0b00,0b00,0b00,
+                           0b10,0b10,0b10,0b10,0b10,0b10,
+                           0b11,0b11,0b11,0b11,0b11,0b11,
+                           0b01,0b01,0b01,0b01,0b01};
 
 //
 // VELOCITY
@@ -105,14 +121,7 @@ unsigned int ship_screen_y_px = 0;
 unsigned char joy;
 unsigned long frame = 0;
 
-typedef struct {
-  unsigned int flips;
-  unsigned int frame_offset;
-} SpriteFlipper;
-
-SpriteFlipper sprite_flipper;
-
-void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_addr) {
+void load_into_vera(unsigned char* filename, unsigned long base_addr, char secondary_address) {
 
   unsigned char m = 2;
 
@@ -132,7 +141,7 @@ void load_into_vera_ignore_header(unsigned char* filename, unsigned long base_ad
   // 1 - File has the 2 byte header, use it
   // 2 - File does NOT have the 2 byte header
 
-  cbm_k_setlfs(0, 8, 0);
+  cbm_k_setlfs(0, 8, secondary_address);
 
   if (base_addr >= 0x10000) {
     base_addr -= 0x10000;
@@ -155,11 +164,12 @@ void vera_setup() {
   asm("lda #2");
   asm("jsr $FF62");
 
-  load_into_vera_ignore_header("map0.bin", MAP0_BASE_ADDR);
-  load_into_vera_ignore_header("sprite0.bin", SHIP_SPRITE_BASE_ADDR);
-  load_into_vera_ignore_header("map1.bin", MAP1_BASE_ADDR);
-  load_into_vera_ignore_header("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR);
-  load_into_vera_ignore_header("circle.bin", CIRCLE_SPRITE_BASE_ADDR);
+  load_into_vera("map0.bin", MAP0_BASE_ADDR,SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
+  load_into_vera("map1.bin", MAP1_BASE_ADDR,SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
+  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
+  load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -188,6 +198,21 @@ void update_wind() {
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
 }
+unsigned long compute_sprite24_frame_addr(unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
+    if (needle_sprite_frame >= 19) {
+      return base_addr + (frame_size_bytes * (24-frame));
+    }
+    else if (needle_sprite_frame >= 13) {
+      return base_addr + (frame_size_bytes * (frame-12));
+    }
+    else if (needle_sprite_frame >= 7) {
+      return base_addr + (frame_size_bytes * (12-frame));
+    }
+    else{
+      return base_addr + frame_size_bytes * frame;
+    }
+
+}
 
 void main() {
 
@@ -195,7 +220,7 @@ void main() {
   vera_setup();
   joy_install(cx16_std_joy);
 
-  ship_screen_x_px = HI_RES ? 240 : 120;
+  ship_screen_x_px = HI_RES ? 240 : 132;
   ship_screen_y_px = HI_RES ? 240 : 120;
   ship_screen_x_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
   ship_screen_y_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
@@ -240,9 +265,15 @@ void main() {
     ship_vx_fpx += x_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
     ship_vy_fpx += y_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
 
+    // 
+    // UPDATE VELOCITY
+    //
     ship_x_fpx += ship_vx_fpx;
     ship_y_fpx += ship_vy_fpx;
 
+    //
+    // DIVIDE BY 256
+    //
     ship_x_px = ship_x_fpx >> 16;
     ship_y_px = ship_y_fpx >> 16;
 
@@ -291,27 +322,8 @@ void main() {
     update_wind();
 
     needle_sprite_frame = wind_direction;
-
-    if (needle_sprite_frame >= 19) {
-      ship_sprite_flips = 0b01;
-      needle_sprite_frame_addr = 
-        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (24-needle_sprite_frame);
-    }
-    else if (needle_sprite_frame >= 13) {
-      ship_sprite_flips = 0b11;
-      needle_sprite_frame_addr = 
-        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (needle_sprite_frame-12);
-    }
-    else if (needle_sprite_frame >= 7) {
-      ship_sprite_flips = 0b10;
-      needle_sprite_frame_addr = 
-        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * (12-needle_sprite_frame);
-    }
-    else {
-      ship_sprite_flips = 0b00;
-      needle_sprite_frame_addr = 
-        NEEDLE_SPRITE_BASE_ADDR + NEEDLE_SPRITE_FRAME_BYTES * needle_sprite_frame;
-    }
+    needle_sprite_frame_addr = compute_sprite24_frame_addr(
+      NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
 
     VERA.data0 = needle_sprite_frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
@@ -320,7 +332,7 @@ void main() {
     VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
     VERA.data0 = NEEDLE_SPRITE_Y_PX;
     VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b00001100 | sprite24_flips[needle_sprite_frame]; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
     VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
