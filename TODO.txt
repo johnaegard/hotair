@@ -8,3 +8,4 @@
 * cloud sprites
 * side view window with basket lowering, lifting ppl up.
 * radar
+* animated prop blades

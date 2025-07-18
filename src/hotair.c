@@ -8,10 +8,6 @@
 
 #include "wait.h"
 
-  // 0 - File has the 2 byte header, but skip it
-  // 1 - File has the 2 byte header, use it
-  // 2 - File does NOT have the 2 byte header
-
 #define SKIP_2_BYTE_HEADER 0
 #define USE_2_BYTE_HEADER 1
 #define NO_2_BYTE_HEADER 2
@@ -40,13 +36,15 @@
 #define NEEDLE_SPRITE_X_PX 280
 #define NEEDLE_SPRITE_Y_PX 200
 
-
 #define WIND_CHANGE_CHANCE 300 // of 32767
 #define WIND_DIRECTIONS 24
 
 #define THRUST_DIVISOR 32
 #define FRICTION_DIVISOR 128
-#define WIND_DIVISOR 96
+#define WIND_DIVISOR 160
+
+#define MONOPLANE_X_PX 288
+#define MONOPLANE_Y_PX 50
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -117,6 +115,8 @@ unsigned char needle_sprite_frame;
 unsigned long needle_sprite_frame_addr;
 unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
+unsigned long monoplane_sprite_frame_addr;
+unsigned char monoplane_frame;
 
 unsigned char joy;
 unsigned long frame = 0;
@@ -198,14 +198,17 @@ void update_wind() {
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
 }
-unsigned long compute_sprite24_frame_addr(unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
-    if (needle_sprite_frame >= 19) {
+unsigned long compute_sprite24_frame_addr(
+  unsigned long base_addr, 
+  unsigned int frame_size_bytes, 
+  unsigned char frame) {
+    if (frame >= 19) {
       return base_addr + (frame_size_bytes * (24-frame));
     }
-    else if (needle_sprite_frame >= 13) {
+    else if (frame >= 13) {
       return base_addr + (frame_size_bytes * (frame-12));
     }
-    else if (needle_sprite_frame >= 7) {
+    else if (frame >= 7) {
       return base_addr + (frame_size_bytes * (12-frame));
     }
     else{
@@ -219,6 +222,7 @@ void main() {
   srand(time(NULL));
   vera_setup();
   joy_install(cx16_std_joy);
+  wind_direction = rand() % 24;
 
   ship_screen_x_px = HI_RES ? 240 : 132;
   ship_screen_y_px = HI_RES ? 240 : 120;
@@ -344,6 +348,20 @@ void main() {
     VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
+
+    monoplane_frame = ((frame / 6) % 24);
+    monoplane_sprite_frame_addr = compute_sprite24_frame_addr(
+      MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
+
+    VERA.data0 = monoplane_sprite_frame_addr >> 5;
+    // 16 color mode, and graphic address bits 16:13
+    VERA.data0 = 0b10001111 & (monoplane_sprite_frame_addr >> 13);
+    VERA.data0 = MONOPLANE_X_PX;
+    VERA.data0 = MONOPLANE_X_PX >> 8;
+    VERA.data0 = MONOPLANE_Y_PX;
+    VERA.data0 = MONOPLANE_Y_PX >> 8;
+    VERA.data0 = 0b00001100 | sprite24_flips[monoplane_frame]; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b01010000; 
 
     frame++;
     wait();
