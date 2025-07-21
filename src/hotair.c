@@ -241,40 +241,7 @@ void sprite72_frame(SpriteFrame *sf, unsigned long base_addr, unsigned int frame
     }
 
 }
-
-void main() {
-  srand(time(NULL));
-  vera_setup();
-  joy_install(cx16_std_joy);
-  wind_direction = rand() % 24;
-  sprite_frame = malloc(sizeof(SpriteFrame)); 
-
-  ship_screen_x_px = HI_RES ? 240 : 132;
-  ship_screen_y_px = HI_RES ? 240 : 120;
-  ship_screen_x_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
-  ship_screen_y_px -= SHIP_SPRITE_SIZE_PIXELS / 2;
-
-  while (true) {
-
-    update_wind();
-    joy = joy_read(0);
-
-    if (JOY_LEFT(joy)) {
-      bearing_fdegs = bearing_fdegs - turn_rate_fdegs_pf;
-      if (bearing_fdegs < 0) {
-        bearing_fdegs = 359 * 64 + bearing_fdegs;
-      }
-    }
-    else if (JOY_RIGHT(joy)) {
-      bearing_fdegs = bearing_fdegs + turn_rate_fdegs_pf;
-      if (bearing_fdegs > 359 * 64) {
-        bearing_fdegs = bearing_fdegs - 359 * 64;
-      }
-    }
-
-    bearing_deg = bearing_fdegs >> 6;
-    bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
-
+void update_ship_position(){
     //
     // THRUST
     //
@@ -306,8 +273,44 @@ void main() {
     //
     ship_x_px = ship_x_fpx >> 16;
     ship_y_px = ship_y_fpx >> 16;
+}
+void update_ship_bearing() {
+  if (JOY_LEFT(joy)) {
+    bearing_fdegs = bearing_fdegs - turn_rate_fdegs_pf;
+    if (bearing_fdegs < 0) {
+      bearing_fdegs = 359 * 64 + bearing_fdegs;
+    }
+  }
+  else if (JOY_RIGHT(joy)) {
+    bearing_fdegs = bearing_fdegs + turn_rate_fdegs_pf;
+    if (bearing_fdegs > 359 * 64) {
+      bearing_fdegs = bearing_fdegs - 359 * 64;
+    }
+  }
 
-    VERA.layer0.hscroll = ship_x_px - (HI_RES ? 240 : 120);
+  bearing_deg = bearing_fdegs >> 6;
+  bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
+}
+
+void main() {
+  srand(time(NULL));
+  vera_setup();
+  joy_install(cx16_std_joy);
+  wind_direction = rand() % 24;
+  sprite_frame = malloc(sizeof(SpriteFrame)); 
+
+  ship_screen_x_px = (HI_RES ? 240 : 132) - (SHIP_SPRITE_SIZE_PIXELS / 2);
+  ship_screen_y_px = (HI_RES ? 240 : 120) - (SHIP_SPRITE_SIZE_PIXELS / 2);
+
+  while (true) {
+
+    update_wind();
+    joy = joy_read(0);
+
+    update_ship_bearing();
+    update_ship_position();
+
+    VERA.layer0.hscroll = ship_x_px - (HI_RES ? 240 : 132);
     VERA.layer0.vscroll = ship_y_px - (HI_RES ? 240 : 120);
 
     // Point to Sprite 1
