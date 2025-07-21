@@ -10,7 +10,7 @@ def random_petscii():
   b = bytearray()
   b += bytes([2,3])
 
-  colors=[6,9,9,9,9,9,11,11,11,11,11,12,12,12,12,12,15]
+  colors=[6,9,9,9,9,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,15]
 
   color_grid = []
   color_grid = [[0 for _ in range(w)] for _ in range(h)]
@@ -19,15 +19,18 @@ def random_petscii():
     for col in range(w):
       color_grid[row][col] = colors[random.randint(0,len(colors)-1)]
 
-  for row in range(1,h):
-    for col in range(1,w):
-      roll = random.randint(0,99) 
-      if roll < 45: 
-        color_grid[row][col] = color_grid[row][col-1]
-      elif roll < 90: 
-        color_grid[row][col] = color_grid[row-1][col]
-      else:
-        color_grid[row][col] = colors[random.randint(0,len(colors)-1)]
+  for passes in range(5):
+    for row in range(1,h-1):
+      for col in range(1,w-1):
+        roll = random.randint(0,99) 
+        if roll < 25: 
+          color_grid[row][col] = color_grid[row][col-1]
+        elif roll < 50: 
+          color_grid[row][col] = color_grid[row-1][col]
+        elif roll < 75: 
+          color_grid[row][col] = color_grid[row][col+1]
+        elif roll < 99: 
+          color_grid[row][col] = color_grid[row+1][col]
 
   for row in range(256):
     for col in range(128):
