@@ -24,6 +24,8 @@
 #define CIRCLE_SPRITE_BASE_ADDR 0x14600
 #define MONOPLANE_SPRITE_BASE_ADDR 0x14800
 #define MONOPLANE_SPRITE_FRAME_BYTES 128
+#define FLAK_SPRITE_BASE_ADDR 0x14B80
+#define FLAK_SPRITE_FRAME_BYTES 128
 
 #define CHARSET_BASE_ADDR 0x1F000
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
@@ -45,6 +47,9 @@
 
 #define MONOPLANE_X_PX 288
 #define MONOPLANE_Y_PX 50
+
+#define FLAK_X_PX 288
+#define FLAK_Y_PX 80
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -112,6 +117,7 @@ unsigned int ship_screen_x_px = 0;
 unsigned int ship_screen_y_px = 0;
 unsigned long monoplane_sprite_frame_addr;
 unsigned char monoplane_frame;
+unsigned char flak_frame;
 
 unsigned char joy;
 unsigned long frame = 0;
@@ -172,6 +178,7 @@ void vera_setup() {
   load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
   load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
   load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
+  load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -365,6 +372,18 @@ void main() {
     VERA.data0 = MONOPLANE_X_PX >> 8;
     VERA.data0 = MONOPLANE_Y_PX;
     VERA.data0 = MONOPLANE_Y_PX >> 8;
+    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b01010000; 
+
+    flak_frame = (((frame / 6) +12 ) % 24);
+    sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_frame);
+    VERA.data0 = sprite_frame->frame_addr  >> 5;
+    // 16 color mode, and graphic address bits 16:13
+    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
+    VERA.data0 = FLAK_X_PX;
+    VERA.data0 = FLAK_X_PX >> 8;
+    VERA.data0 = FLAK_Y_PX;
+    VERA.data0 = FLAK_Y_PX >> 8;
     VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b01010000; 
 
