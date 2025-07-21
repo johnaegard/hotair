@@ -72,11 +72,6 @@ signed int y_comp_for_bearing[NUM_SHIP_BEARINGS] = {
    0,-2856,-5690,-8481,-11207,-13848,-16384,-18795,-21063,
    -23170,-25102,-26842,-28378,-29698,-30792,-31651,-32270,-32643 };
 
-char sprite24_flips[24] = {0b00,0b00,0b00,0b00,0b00,0b00,0b00,
-                           0b10,0b10,0b10,0b10,0b10,0b10,
-                           0b11,0b11,0b11,0b11,0b11,0b11,
-                           0b01,0b01,0b01,0b01,0b01};
-
 //
 // VELOCITY
 //
@@ -120,6 +115,13 @@ unsigned char monoplane_frame;
 
 unsigned char joy;
 unsigned long frame = 0;
+
+typedef struct {
+  unsigned char flips;
+  unsigned long frame_addr;
+} SpriteFrame;
+
+SpriteFrame *sprite_frame;
 
 void load_into_vera(unsigned char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -198,31 +200,54 @@ void update_wind() {
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
 }
-unsigned long compute_sprite24_frame_addr(
-  unsigned long base_addr, 
-  unsigned int frame_size_bytes, 
-  unsigned char frame) {
-    if (frame >= 19) {
-      return base_addr + (frame_size_bytes * (24-frame));
+void sprite24_frame(SpriteFrame *sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
+  if (frame >= 19) {
+    sf->flips = 0b01;
+    sf->frame_addr = base_addr + (frame_size_bytes * (24-frame));
+  }
+  else if (frame >= 13) {
+    sf->flips = 0b11;
+    sf->frame_addr = base_addr + (frame_size_bytes * (frame-12));
+  }
+  else if (frame >= 7) {
+    sf->flips = 0b10;
+    sf->frame_addr = base_addr + (frame_size_bytes * (12-frame));
+  }
+  else{
+    sf->flips = 0b00;
+    sf->frame_addr = base_addr + frame_size_bytes * frame;
+  }
+}
+void sprite72_frame(SpriteFrame *sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame){
+
+    if (frame >= 0 && frame <= 18) {
+      sf->flips = 0b00;
+      sf->frame_addr = base_addr + (frame_size_bytes * frame);
     }
-    else if (frame >= 13) {
-      return base_addr + (frame_size_bytes * (frame-12));
+    else if (frame >= 19 && frame <= 36) {
+      sf->flips = 0b10;
+      sf->frame_addr = base_addr
+        + (frame_size_bytes * (36 - frame));
     }
-    else if (frame >= 7) {
-      return base_addr + (frame_size_bytes * (12-frame));
+    else if (frame >= 37 && frame <= 54) {
+      sf->flips = 0b11;
+      sf->frame_addr = base_addr
+        + (frame_size_bytes * ((frame - 36)));
     }
-    else{
-      return base_addr + frame_size_bytes * frame;
+    else if (frame >= 55 && frame <= 71) {
+      sf->flips = 0b01;
+      sf->frame_addr = base_addr
+        + (frame_size_bytes * (72 - frame));
     }
 
 }
 
 void main() {
-
   srand(time(NULL));
   vera_setup();
   joy_install(cx16_std_joy);
   wind_direction = rand() % 24;
+  sprite_frame = malloc(sizeof(SpriteFrame)); 
 
   ship_screen_x_px = HI_RES ? 240 : 132;
   ship_screen_y_px = HI_RES ? 240 : 120;
@@ -231,6 +256,7 @@ void main() {
 
   while (true) {
 
+    update_wind();
     joy = joy_read(0);
 
     if (JOY_LEFT(joy)) {
@@ -276,7 +302,7 @@ void main() {
     ship_y_fpx += ship_vy_fpx;
 
     //
-    // DIVIDE BY 256
+    // DIVIDE BY 256 to go from fpx to px
     //
     ship_x_px = ship_x_fpx >> 16;
     ship_y_px = ship_y_fpx >> 16;
@@ -290,53 +316,31 @@ void main() {
     // Set the Increment Mode, turn on bit 4
     VERA.address_hi |= 0b10000;
 
-    if (bearing_frame >= 0 && bearing_frame <= 18) {
-      ship_sprite_flips = 0b00;
-      ship_sprite_frame_addr = 
-        SHIP_SPRITE_BASE_ADDR + (SHIP_SPRITE_FRAME_BYTES * bearing_frame);
-    }
-    else if (bearing_frame >= 19 && bearing_frame <= 36) {
-      ship_sprite_flips = 0b10;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
-        + (SHIP_SPRITE_FRAME_BYTES * (36 - bearing_frame));
-    }
-    else if (bearing_frame >= 37 && bearing_frame <= 54) {
-      ship_sprite_flips = 0b11;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
-        + (SHIP_SPRITE_FRAME_BYTES * ((bearing_frame - 36)));
-    }
-    else if (bearing_frame >= 55 && bearing_frame <= 71) {
-      ship_sprite_flips = 0b01;
-      ship_sprite_frame_addr = SHIP_SPRITE_BASE_ADDR
-        + (SHIP_SPRITE_FRAME_BYTES * (72 - bearing_frame));
-    }
+    sprite72_frame(sprite_frame, SHIP_SPRITE_BASE_ADDR, SHIP_SPRITE_FRAME_BYTES, bearing_frame);
 
     // Configure Sprite 1
     // Graphic address bits 12:5
-    VERA.data0 = ship_sprite_frame_addr >> 5;
+    VERA.data0 = sprite_frame->frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & ship_sprite_frame_addr >> 13;
+    VERA.data0 = 0b10001111 & sprite_frame->frame_addr >> 13;
     VERA.data0 = ship_screen_x_px;
     VERA.data0 = ship_screen_x_px >> 8;
     VERA.data0 = ship_screen_y_px;
     VERA.data0 = ship_screen_y_px >> 8;
-    VERA.data0 = 0b00001100 | ship_sprite_flips; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
-    update_wind();
-
     needle_sprite_frame = wind_direction;
-    needle_sprite_frame_addr = compute_sprite24_frame_addr(
-      NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
+    sprite24_frame(sprite_frame,NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
 
-    VERA.data0 = needle_sprite_frame_addr >> 5;
+    VERA.data0 = sprite_frame->frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (needle_sprite_frame_addr >> 13);
+    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr >> 13);
     VERA.data0 = NEEDLE_SPRITE_X_PX;
     VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
     VERA.data0 = NEEDLE_SPRITE_Y_PX;
     VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | sprite24_flips[needle_sprite_frame]; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
     VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
@@ -350,17 +354,15 @@ void main() {
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
     monoplane_frame = ((frame / 6) % 24);
-    monoplane_sprite_frame_addr = compute_sprite24_frame_addr(
-      MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
-
-    VERA.data0 = monoplane_sprite_frame_addr >> 5;
+    sprite24_frame(sprite_frame, MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
+    VERA.data0 = sprite_frame->frame_addr  >> 5;
     // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (monoplane_sprite_frame_addr >> 13);
+    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
     VERA.data0 = MONOPLANE_X_PX;
     VERA.data0 = MONOPLANE_X_PX >> 8;
     VERA.data0 = MONOPLANE_Y_PX;
     VERA.data0 = MONOPLANE_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | sprite24_flips[monoplane_frame]; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b01010000; 
 
     frame++;
