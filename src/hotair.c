@@ -48,8 +48,12 @@
 #define MONOPLANE_X_PX 288
 #define MONOPLANE_Y_PX 50
 
-#define FLAK_X_PX 288
-#define FLAK_Y_PX 80
+#define NUM_FLAK_GUNS 4
+
+#define LOWRES_CENTER_X 132
+#define HIRES_CENTER_X 264
+#define LOWRES_CENTER_Y 120
+#define HIRES_CENTER_Y 240
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -127,7 +131,20 @@ typedef struct {
   unsigned long frame_addr;
 } SpriteFrame;
 
+typedef struct {
+  unsigned int x_px;
+  unsigned int y_px;
+  unsigned char bearing;
+} FlakGun;
+
 SpriteFrame *sprite_frame;
+FlakGun *flak_guns[NUM_FLAK_GUNS];
+unsigned char i;
+unsigned int flak_screen_x_px; 
+unsigned int flak_screen_y_px; 
+
+unsigned int hscroll;
+unsigned int vscroll;
 
 void load_into_vera(unsigned char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -304,7 +321,18 @@ void main() {
   vera_setup();
   joy_install(cx16_std_joy);
   wind_direction = rand() % 24;
-  sprite_frame = malloc(sizeof(SpriteFrame)); 
+  sprite_frame = malloc(sizeof(SpriteFrame));
+  for(i=0; i< NUM_FLAK_GUNS; i++) {
+    flak_guns[i] = malloc(NUM_FLAK_GUNS * sizeof(FlakGun));
+  }
+  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 55;
+  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 55;
+  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 41;
+  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 55;
+  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 41;
+  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 41;
+  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 55;
+  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 41;
 
   ship_screen_x_px = (HI_RES ? 240 : 132) - (SHIP_SPRITE_SIZE_PIXELS / 2);
   ship_screen_y_px = (HI_RES ? 240 : 120) - (SHIP_SPRITE_SIZE_PIXELS / 2);
@@ -317,8 +345,10 @@ void main() {
     update_ship_bearing();
     update_ship_position();
 
-    VERA.layer0.hscroll = ship_x_px - (HI_RES ? 240 : 132);
-    VERA.layer0.vscroll = ship_y_px - (HI_RES ? 240 : 120);
+    hscroll = ship_x_px - (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
+    vscroll = ship_y_px - (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
+    VERA.layer0.hscroll = hscroll;
+    VERA.layer0.vscroll = vscroll;
 
     // Point to Sprite 1
     VERA.address = SPRITE_ATTR_BASE_ADDR;
@@ -375,17 +405,21 @@ void main() {
     VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b01010000; 
 
-    flak_frame = (((frame / 6) +12 ) % 24);
-    sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_frame);
-    VERA.data0 = sprite_frame->frame_addr  >> 5;
-    // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
-    VERA.data0 = FLAK_X_PX;
-    VERA.data0 = FLAK_X_PX >> 8;
-    VERA.data0 = FLAK_Y_PX;
-    VERA.data0 = FLAK_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = 0b01010000; 
+    for(i=0; i< NUM_FLAK_GUNS; i++){
+      flak_screen_x_px = flak_guns[i]->x_px - hscroll;
+      flak_screen_y_px = flak_guns[i]->y_px - vscroll;
+      flak_guns[i]->bearing = (((frame / 6) + i*5 ) % 24);
+      sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
+      VERA.data0 = sprite_frame->frame_addr  >> 5;
+      // 16 color mode, and graphic address bits 16:13
+      VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
+      VERA.data0 = flak_screen_x_px;
+      VERA.data0 = flak_screen_x_px >> 8;
+      VERA.data0 = flak_screen_y_px;
+      VERA.data0 = flak_screen_y_px >> 8;
+      VERA.data0 = 0b00001000 | sprite_frame->flips; // Z-Depth=2, Sprite behind layer 1
+      VERA.data0 = 0b01010000; 
+    }
 
     frame++;
     wait();

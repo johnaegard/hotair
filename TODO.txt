@@ -1,5 +1,7 @@
-* enemy sprite (16-directions)
 * flak guns
+  * place
+  * track
+  * shoot
 * mouse target
 * throttle
 * bombing ground targets with ascii splosions
@@ -9,3 +11,12 @@
 * side view window with basket lowering, lifting ppl up.
 * radar
 * animated prop blades
+* bomb site 
+* intro and logo screen
+
+* dashboard
+  * buoyancy 
+  * rescues
+  * score
+  * bombs
+  * ammunition
