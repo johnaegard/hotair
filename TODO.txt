@@ -1,19 +1,19 @@
 * flak guns
-  * place
+  x place
   * track
   * shoot
+    * burst sprite
 * mouse target
 * throttle
-* bombing ground targets with ascii splosions
 * rescue something
 * hold steady against wind while rescuring things
 * cloud sprites
 * side view window with basket lowering, lifting ppl up.
 * radar
 * animated prop blades
-* bomb site 
+* bomb attack
+  * ascii explosion
 * intro and logo screen
-
 * dashboard
   * buoyancy 
   * rescues

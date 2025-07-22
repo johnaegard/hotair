@@ -2,10 +2,7 @@
 
 import random
 
-h = 256
-w = 128
-
-def junkyard_petscii():
+def junkyard_petscii(w,h):
 
   b = bytearray()
   b += bytes([2,3])
@@ -39,6 +36,39 @@ def junkyard_petscii():
       b += bytes([tile,color])
   return b
 
+def overlay(w,h):
+  b=bytearray()
+  b += bytes([2,3])
+  for row in range(32):
+    for col in range(64):
+      color = 0x01 if col <30 else 0xC1
+      if col == 30:
+        if row == 0:
+          char = 0x4f
+        elif row == 29:
+          char = 0x4c;
+        else:
+          char = 0x74
+      elif col == 39:
+        if row == 0:
+          char = 0x50
+        elif row == 29:
+          char = 0x7a;
+        else:
+          char = 0x6a;
+      elif row == 0 and col >= 30 and col <= 38:
+          char = 0x77;
+      elif row == 29 and col >= 30 and col <= 38:
+          char = 0x6f;
+      else:
+        char=0x20;
+
+      b += bytes([char,color])
+  return b    
+
+
+
+
 
 def draw_block(w,row,col,b):
   print(w,row,col)
@@ -54,7 +84,10 @@ def draw_block(w,row,col,b):
   b[row2_byte:row2_byte+8] = bytes([0x42,color,0x20,color,0x20,color,0x42,color])
   b[row3_byte:row3_byte+8] = bytes([0x6d,color,0x40,color,0x40,color,0x7d,color])
 
-b = junkyard_petscii()
+
+w=128
+h=256
+b = junkyard_petscii(w,h)
 
 ccol = int((w/2) -2)
 crow = int((h/2) -2)
@@ -72,40 +105,7 @@ print(f"Wrote {len(b)} bytes to {filename}")
 
 
 
-
-
-
-
-
-
-b1=bytearray()
-b1 += bytes([2,3])
-for row in range(32):
-  for col in range(64):
-    color = 0x01 if col <34 else 0xC1
-    if col == 34:
-      if row == 0:
-        char = 0x4f
-      elif row == 29:
-        char = 0x4c;
-      else:
-        char = 0x74
-    elif col == 39:
-      if row == 0:
-        char = 0x50
-      elif row == 29:
-        char = 0x7a;
-      else:
-        char = 0x6a;
-    elif row == 0 and col >= 34 and col <= 38:
-        char = 0x77;
-    elif row == 29 and col >= 34 and col <= 38:
-        char = 0x6f;
-    else:
-      char=0x20;
-
-    b1 += bytes([char,color])
-
+b1=overlay(64,32)
 wind_label_addr = 2 + ( (23*64) + 35) *2;
 color = 0x21;
 b1[wind_label_addr:wind_label_addr+8] = bytes([0x17, color, 0x09, color, 0x0e, color, 0x04, color])
