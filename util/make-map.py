@@ -2,15 +2,15 @@
 
 import random
 
-def random_petscii():
+h = 256
+w = 128
 
-  h = 256
-  w = 128
+def junkyard_petscii():
 
   b = bytearray()
   b += bytes([2,3])
 
-  colors=[6,9,9,9,9,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,15]
+  colors=[0x6B,9,9,9,9,9,11,11,11,11,11,11,11,12,12,12,12,12,12,12,12,15]
 
   color_grid = []
   color_grid = [[0 for _ in range(w)] for _ in range(h)]
@@ -39,12 +39,41 @@ def random_petscii():
       b += bytes([tile,color])
   return b
 
-b = random_petscii()
+
+def draw_block(w,row,col,b):
+  print(w,row,col)
+
+  row0_byte = int(2 + (row * w + col) * 2)
+  row1_byte = row0_byte + (2*w)
+  row2_byte = row1_byte + (2*w)
+  row3_byte = row2_byte + (2*w)
+  color = 0x02
+
+  b[row0_byte:row0_byte+8] = bytes([0x70,color,0x40,color,0x40,color,0x6e,color])
+  b[row1_byte:row1_byte+8] = bytes([0x42,color,0x20,color,0x20,color,0x42,color])
+  b[row2_byte:row2_byte+8] = bytes([0x42,color,0x20,color,0x20,color,0x42,color])
+  b[row3_byte:row3_byte+8] = bytes([0x6d,color,0x40,color,0x40,color,0x7d,color])
+
+b = junkyard_petscii()
+
+ccol = int((w/2) -2)
+crow = int((h/2) -2)
+
+draw_block(w,crow-6,ccol-6,b)
+draw_block(w,crow-6,ccol+6,b)
+draw_block(w,crow+6,ccol-6,b)
+draw_block(w,crow+6,ccol+6,b)
+
 filename="map0.bin"
 with open(filename, 'wb') as f:
-  f.write(b)
-  
+  f.write(b) 
+
 print(f"Wrote {len(b)} bytes to {filename}")
+
+
+
+
+
 
 
 
