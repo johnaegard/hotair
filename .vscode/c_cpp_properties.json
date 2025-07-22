@@ -4,10 +4,10 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/share/cc65/include/**"
+                "/usr/share/cc65/include/**",
+                "/home/johnzo/src/cc65/include/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/clang",
             "cppStandard": "c++14",
             "intelliSenseMode": "linux-clang-x64",
             "cStandard": "c89"

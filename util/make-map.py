@@ -39,26 +39,26 @@ def junkyard_petscii(w,h):
 def overlay(w,h):
   b=bytearray()
   b += bytes([2,3])
-  for row in range(32):
-    for col in range(64):
-      color = 0x01 if col <30 else 0xC1
-      if col == 30:
+  for row in range(h):
+    for col in range(w):
+      color = 0x01 if col <70 else 0xC1
+      if col == 70:
         if row == 0:
           char = 0x4f
-        elif row == 29:
+        elif row == 59:
           char = 0x4c;
         else:
           char = 0x74
-      elif col == 39:
+      elif col == 79:
         if row == 0:
           char = 0x50
-        elif row == 29:
+        elif row == 59:
           char = 0x7a;
         else:
           char = 0x6a;
-      elif row == 0 and col >= 30 and col <= 38:
+      elif row == 0 and col >= 70 and col <= 78:
           char = 0x77;
-      elif row == 29 and col >= 30 and col <= 38:
+      elif row == 59 and col >= 70 and col <= 78:
           char = 0x6f;
       else:
         char=0x20;
@@ -104,9 +104,11 @@ with open(filename, 'wb') as f:
 print(f"Wrote {len(b)} bytes to {filename}")
 
 
+ow = 128
+oh = 64
 
-b1=overlay(64,32)
-wind_label_addr = 2 + ( (23*64) + 35) *2;
+b1=overlay(ow,oh)
+wind_label_addr = 2 + ( (53*ow) + 75) *2;
 color = 0x21;
 b1[wind_label_addr:wind_label_addr+8] = bytes([0x17, color, 0x09, color, 0x0e, color, 0x04, color])
 

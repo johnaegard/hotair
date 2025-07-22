@@ -17,26 +17,26 @@
 
 #define MAP0_BASE_ADDR 0x00000
 #define SHIP_SPRITE_BASE_ADDR 0x10000
-#define SHIP_SPRITE_FRAME_BYTES 512
 #define MAP1_BASE_ADDR 0x12800
-#define NEEDLE_SPRITE_BASE_ADDR 0x13800
-#define NEEDLE_SPRITE_FRAME_BYTES 512
-#define CIRCLE_SPRITE_BASE_ADDR 0x14600
-#define MONOPLANE_SPRITE_BASE_ADDR 0x14800
-#define MONOPLANE_SPRITE_FRAME_BYTES 128
-#define FLAK_SPRITE_BASE_ADDR 0x14B80
-#define FLAK_SPRITE_FRAME_BYTES 128
-
-#define CHARSET_BASE_ADDR 0x1F000
+#define NEEDLE_SPRITE_BASE_ADDR 0x16800
+#define CIRCLE_SPRITE_BASE_ADDR 0x17600
+#define MONOPLANE_SPRITE_BASE_ADDR 0x17800
+#define FLAK_SPRITE_BASE_ADDR 0x17B80
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
+#define CHARSET_BASE_ADDR 0x1F000
+
+#define SHIP_SPRITE_FRAME_BYTES 512
+#define NEEDLE_SPRITE_FRAME_BYTES 512
+#define MONOPLANE_SPRITE_FRAME_BYTES 128
+#define FLAK_SPRITE_FRAME_BYTES 128
 
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
 #define TILE_SIZE_PX 16 
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define HI_RES true
-#define NEEDLE_SPRITE_X_PX 280
-#define NEEDLE_SPRITE_Y_PX 200
+#define WIND_GAUGE_X_PX 600
+#define WIND_GAUGE_Y_PX 440
 
 #define WIND_CHANGE_CHANCE 300 // of 32767
 #define WIND_DIRECTIONS 24
@@ -45,13 +45,13 @@
 #define FRICTION_DIVISOR 128
 #define WIND_DIVISOR 160
 
-#define MONOPLANE_X_PX 288
-#define MONOPLANE_Y_PX 50
+#define MONOPLANE_X_PX 620
+#define MONOPLANE_Y_PX 30
 
 #define NUM_FLAK_GUNS 4
 
 #define LOWRES_CENTER_X 132
-#define HIRES_CENTER_X 264
+#define HIRES_CENTER_X 280
 #define LOWRES_CENTER_Y 120
 #define HIRES_CENTER_Y 240
 
@@ -183,7 +183,7 @@ unsigned int vscroll;
 signed int xoffset;
 signed int yoffset;
 
-void load_into_vera(unsigned char* filename, unsigned long base_addr, char secondary_address) {
+void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
   unsigned char m = 2;
 
@@ -245,7 +245,7 @@ void vera_setup() {
     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
     & 0b11111100;             // tile height / width = 8px
 
-  VERA.layer1.config = 0b00010000;  // 32x64 16-color tiles
+  VERA.layer1.config = 0b01100000;  // 128(w)x64(h) 16-color tiles
   VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9) & 0b11111100;  // top eight bits of 17-bit address and 8x8
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
@@ -371,8 +371,8 @@ void main() {
   flak_guns[3]->x_px = (ship_x_fpx >> 16) - 55;
   flak_guns[3]->y_px = (ship_y_fpx >> 16) + 41;
 
-  ship_screen_x_px = (HI_RES ? 240 : 120) - (SHIP_SPRITE_SIZE_PIXELS / 2);
-  ship_screen_y_px = (HI_RES ? 240 : 120) - (SHIP_SPRITE_SIZE_PIXELS / 2);
+  ship_screen_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X) - (SHIP_SPRITE_SIZE_PIXELS / 2);
+  ship_screen_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y) - (SHIP_SPRITE_SIZE_PIXELS / 2);
 
   while (true) {
 
@@ -413,20 +413,20 @@ void main() {
     VERA.data0 = sprite_frame->frame_addr >> 5;
     // 16 color mode, and graphic address bits 16:13
     VERA.data0 = 0b10001111 & (sprite_frame->frame_addr >> 13);
-    VERA.data0 = NEEDLE_SPRITE_X_PX;
-    VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
-    VERA.data0 = NEEDLE_SPRITE_Y_PX;
-    VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
+    VERA.data0 = WIND_GAUGE_X_PX;
+    VERA.data0 = WIND_GAUGE_X_PX >> 8;
+    VERA.data0 = WIND_GAUGE_Y_PX;
+    VERA.data0 = WIND_GAUGE_Y_PX >> 8;
     VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
     VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
     // 16 color mode, and graphic address bits 16:13
     VERA.data0 = 0b10001111 & (CIRCLE_SPRITE_BASE_ADDR >> 13);
-    VERA.data0 = NEEDLE_SPRITE_X_PX;
-    VERA.data0 = NEEDLE_SPRITE_X_PX >> 8;
-    VERA.data0 = NEEDLE_SPRITE_Y_PX;
-    VERA.data0 = NEEDLE_SPRITE_Y_PX >> 8;
+    VERA.data0 = WIND_GAUGE_X_PX;
+    VERA.data0 = WIND_GAUGE_X_PX >> 8;
+    VERA.data0 = WIND_GAUGE_Y_PX;
+    VERA.data0 = WIND_GAUGE_Y_PX >> 8;
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
