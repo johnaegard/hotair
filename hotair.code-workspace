@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../cx16CodingInC"
+		},
+		{
+			"path": "../x16-docs"
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"editorCursor.foreground": "#ffff00",
+			"terminalCursor.foreground": "#ff3300"
+		}
+	}
+}
