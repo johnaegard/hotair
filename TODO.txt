@@ -1,4 +1,3 @@
-* better randomization (wind)
 * flak guns
   x place
   X track
@@ -6,6 +5,7 @@
   * shoot
     X burst sprite
     * shell
+* better randomization (wind)
 * mouse target
 * throttle
 * rescue / loot something
@@ -16,6 +16,7 @@
 * animated prop blades
 * bomb attack
   * ascii explosion
+* make playfield use 16-pixel tiles that are composites of petscii tiles -- will increase the size of the map by 4x.
 * intro and logo screen
 * dashboard
   * buoyancy 
@@ -30,6 +31,15 @@
   * etc
 * loot!
   * various pieces of retro kit
+  
+
+VERA MEMORY SAVINGS
+  * remove overlay.
+  * make overlay a map of 16-pixel tiles -- map shrinks to 25% of its size (tho requires a new 16-pixel tileset)
+
+
+
+
 
 
   TOOLS USED

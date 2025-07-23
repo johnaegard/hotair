@@ -538,10 +538,10 @@ void main() {
       // FLAK BURST
       //
 
-      flak_burst_screen_x_px = 50;
-      flak_burst_screen_y_px = 50;
+      flak_burst_screen_x_px = 100;
+      flak_burst_screen_y_px = 100;
 
-      flak_burst_frame = (game_frame / 3) % 7;
+      flak_burst_frame = (game_frame / 2) % 7;
       flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame  * FLAK_BURST_SPRITE_FRAME_BYTES);
 
       VERA.data0 = flak_burst_frame_addr  >> 5;
