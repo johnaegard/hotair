@@ -32,7 +32,7 @@
 
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
-#define TILE_SIZE_PX 16 
+#define TILE_SIZE_PX 8 
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define HI_RES true
 #define WIND_GAUGE_X_PX 600
@@ -43,7 +43,7 @@
 
 #define THRUST_DIVISOR 32
 #define FRICTION_DIVISOR 128
-#define WIND_DIVISOR 160
+#define WIND_DIVISOR 512
 
 #define MONOPLANE_X_PX 620
 #define MONOPLANE_Y_PX 30
@@ -126,8 +126,8 @@ signed long ship_vy_friction = 0;
 //
 // POSITION
 //
-unsigned long ship_x_fpx = 32767 * MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
-unsigned long ship_y_fpx = 32767 * MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
+unsigned long ship_x_fpx;
+unsigned long ship_y_fpx;
 unsigned int  ship_x_px;
 unsigned int  ship_y_px;
 
@@ -158,7 +158,7 @@ unsigned char monoplane_frame;
 unsigned char flak_frame;
 
 unsigned char joy;
-unsigned long frame = 0;
+unsigned long game_frame = 0;
 
 typedef struct {
   unsigned char flips;
@@ -354,6 +354,11 @@ void update_ship_bearing() {
 }
 
 void main() {
+  ship_x_fpx = (MAP_WIDTH_TILES * TILE_SIZE_PX / 2);
+  ship_x_fpx = ship_x_fpx << 16;
+  ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
+  ship_y_fpx = ship_y_fpx << 16;
+
   srand(time(NULL));
   vera_setup();
   joy_install(cx16_std_joy);
@@ -362,14 +367,17 @@ void main() {
   for(i=0; i< NUM_FLAK_GUNS; i++) {
     flak_guns[i] = malloc(NUM_FLAK_GUNS * sizeof(FlakGun));
   }
-  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 55;
-  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 55;
-  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 41;
-  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 55;
-  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 41;
-  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 41;
-  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 55;
-  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 41;
+  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
+  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 56;
+
+  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 40;
+  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 56;
+
+  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 40;
+  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 40;
+
+  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 56;
+  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 40;
 
   ship_screen_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X) - (SHIP_SPRITE_SIZE_PIXELS / 2);
   ship_screen_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y) - (SHIP_SPRITE_SIZE_PIXELS / 2);
@@ -430,7 +438,7 @@ void main() {
     VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
-    monoplane_frame = ((frame / 6) % 24);
+    monoplane_frame = ((game_frame / 6) % 24);
     sprite24_frame(sprite_frame, MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
     VERA.data0 = sprite_frame->frame_addr  >> 5;
     // 16 color mode, and graphic address bits 16:13
@@ -450,10 +458,9 @@ void main() {
       flak_screen_x_px = flak_guns[i]->x_px - hscroll;
       flak_screen_y_px = flak_guns[i]->y_px - vscroll;
 
-
       // yoffset = flak_guns[i]->y_px - ship_y_px;
 
-      flak_guns[i]->bearing = (((frame / 6) + i*5 ) % 24);
+      flak_guns[i]->bearing = (((game_frame / 6) + i*5 ) % 24);
       sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
       VERA.data0 = sprite_frame->frame_addr  >> 5;
       // 16 color mode, and graphic address bits 16:13
@@ -466,7 +473,7 @@ void main() {
       VERA.data0 = 0b01010000; 
     }
 
-    frame++;
+    game_frame++;
     wait();
   }
 

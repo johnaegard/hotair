@@ -66,10 +66,6 @@ def overlay(w,h):
       b += bytes([char,color])
   return b    
 
-
-
-
-
 def draw_block(w,row,col,b):
   print(w,row,col)
 
@@ -102,7 +98,6 @@ with open(filename, 'wb') as f:
   f.write(b) 
 
 print(f"Wrote {len(b)} bytes to {filename}")
-
 
 ow = 128
 oh = 64
