@@ -22,6 +22,7 @@
 #define CIRCLE_SPRITE_BASE_ADDR 0x17600
 #define MONOPLANE_SPRITE_BASE_ADDR 0x17800
 #define FLAK_SPRITE_BASE_ADDR 0x17B80
+#define CROSSHAIR_SPRITE_BASE_ADDR 0x17F00
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define CHARSET_BASE_ADDR 0x1F000
 
@@ -34,6 +35,7 @@
 #define MAP_HEIGHT_TILES 256
 #define TILE_SIZE_PX 8 
 #define SHIP_SPRITE_SIZE_PIXELS 32
+#define CROSSHAIR_SPRITE_SIZE_PIXELS 32
 #define HI_RES true
 #define WIND_GAUGE_X_PX 600
 #define WIND_GAUGE_Y_PX 440
@@ -54,6 +56,9 @@
 #define HIRES_CENTER_X 280
 #define LOWRES_CENTER_Y 120
 #define HIRES_CENTER_Y 240
+
+#define PREDICTOR_LOOKAHEAD_FRAMES 180
+#define SHOW_PREDICTOR true
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -128,8 +133,12 @@ signed long ship_vy_friction = 0;
 //
 unsigned long ship_x_fpx;
 unsigned long ship_y_fpx;
-unsigned int  ship_x_px;
-unsigned int  ship_y_px;
+unsigned int ship_x_px;
+unsigned int ship_y_px;
+unsigned long ship_x_predict_fpx;
+unsigned long ship_y_predict_fpx;
+unsigned int ship_x_predict_px;
+unsigned int ship_y_predict_px;
 
 //
 // BEARING AND TURN RATE
@@ -156,6 +165,8 @@ unsigned int ship_screen_y_px = 0;
 unsigned long monoplane_sprite_frame_addr;
 unsigned char monoplane_frame;
 unsigned char flak_frame;
+unsigned int crosshair_screen_x_px = 0;
+unsigned int crosshair_screen_y_px = 0;
 
 unsigned char joy;
 unsigned long game_frame = 0;
@@ -233,6 +244,7 @@ void vera_setup() {
   load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
   load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
   load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
+  load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -334,6 +346,17 @@ void update_ship_position(){
     //
     ship_x_px = ship_x_fpx >> 16;
     ship_y_px = ship_y_fpx >> 16;
+
+    //
+    // FORECAST
+    //
+     ship_x_predict_fpx = ship_x_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vx_fpx);
+     ship_y_predict_fpx = ship_y_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vy_fpx);
+     ship_x_predict_px = ship_x_predict_fpx >> 16;
+     ship_y_predict_px = ship_y_predict_fpx >> 16;
+
+    // ship_x_predict_px = ship_x_px + 20;
+    // ship_y_predict_px = ship_y_px + 20;
 }
 void update_ship_bearing() {
   if (JOY_LEFT(joy)) {
@@ -471,6 +494,23 @@ void main() {
       VERA.data0 = flak_screen_y_px >> 8;
       VERA.data0 = 0b00001000 | sprite_frame->flips; // Z-Depth=2, Sprite behind layer 1
       VERA.data0 = 0b01010000; 
+
+      //
+      // CROSSHAIR
+      //
+
+      crosshair_screen_x_px = ship_x_predict_px - hscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS/2);
+      crosshair_screen_y_px = ship_y_predict_px - vscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS/2);
+
+      VERA.data0 = CROSSHAIR_SPRITE_BASE_ADDR  >> 5;
+      // 16 color mode, and graphic address bits 16:13
+      VERA.data0 = 0b10001111 & (CROSSHAIR_SPRITE_BASE_ADDR  >> 13);
+      VERA.data0 = crosshair_screen_x_px;
+      VERA.data0 = crosshair_screen_x_px >> 8;
+      VERA.data0 = crosshair_screen_y_px;
+      VERA.data0 = crosshair_screen_y_px >> 8;
+      VERA.data0 = 0b00001000 & (SHOW_PREDICTOR ? 0b1111 : 0b0000 );
+      VERA.data0 = 0b10100000; 
     }
 
     game_frame++;

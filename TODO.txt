@@ -20,3 +20,14 @@
   * score
   * bombs
   * ammunition
+
+
+
+
+  TOOLS USED 
+  * tiled
+  * gimp tool 
+  * coding in C tutorial
+  * 6502 assembler tutorial
+  * cc65
+  
