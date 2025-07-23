@@ -40,6 +40,8 @@
 #define WIND_GAUGE_X_PX 600
 #define WIND_GAUGE_Y_PX 440
 
+#define WIND_ON false 
+
 #define WIND_CHANGE_CHANCE 300 // of 32767
 #define WIND_DIRECTIONS 24
 
@@ -167,6 +169,8 @@ unsigned char monoplane_frame;
 unsigned char flak_frame;
 unsigned int crosshair_screen_x_px = 0;
 unsigned int crosshair_screen_y_px = 0;
+unsigned int screen_center_x_px = 0;
+unsigned int screen_center_y_px = 0;
 
 unsigned char joy;
 unsigned long game_frame = 0;
@@ -193,6 +197,8 @@ unsigned int vscroll;
 
 signed int xoffset;
 signed int yoffset;
+
+bool hide_sprite = false; 
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -332,8 +338,10 @@ void update_ship_position(){
     //
     // WIND
     //
-    ship_vx_fpx += x_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
-    ship_vy_fpx += y_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
+    if (WIND_ON) {
+      ship_vx_fpx += x_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
+      ship_vy_fpx += y_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
+    }
 
     // 
     // UPDATE VELOCITY
@@ -355,8 +363,6 @@ void update_ship_position(){
      ship_x_predict_px = ship_x_predict_fpx >> 16;
      ship_y_predict_px = ship_y_predict_fpx >> 16;
 
-    // ship_x_predict_px = ship_x_px + 20;
-    // ship_y_predict_px = ship_y_px + 20;
 }
 void update_ship_bearing() {
   if (JOY_LEFT(joy)) {
@@ -402,8 +408,10 @@ void main() {
   flak_guns[3]->x_px = (ship_x_fpx >> 16) - 56;
   flak_guns[3]->y_px = (ship_y_fpx >> 16) + 40;
 
-  ship_screen_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X) - (SHIP_SPRITE_SIZE_PIXELS / 2);
-  ship_screen_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y) - (SHIP_SPRITE_SIZE_PIXELS / 2);
+  screen_center_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
+  screen_center_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
+  ship_screen_x_px = screen_center_x_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
+  ship_screen_y_px = screen_center_y_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
 
   while (true) {
 
@@ -475,15 +483,21 @@ void main() {
 
     for(i=0; i< NUM_FLAK_GUNS; i++){
 
-      xoffset = (flak_guns[i]->x_px - ship_x_px) + 120;
-      yoffset = (flak_guns[i]->y_px - ship_y_px) + 120;
+      xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
+      yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
 
+      // if ((abs(xoffset) > ship_screen_x_px)  || (abs(yoffset) > ship_screen_y_px)) {
+      //   hide_sprite = true;
+      //   flak_guns[i]->bearing = 0; 
+      // } 
+      // else {
+      hide_sprite = true;
+      flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px)/18][(yoffset + screen_center_y_px)/16]; 
+      // }
+      
       flak_screen_x_px = flak_guns[i]->x_px - hscroll;
       flak_screen_y_px = flak_guns[i]->y_px - vscroll;
 
-      // yoffset = flak_guns[i]->y_px - ship_y_px;
-
-      flak_guns[i]->bearing = (((game_frame / 6) + i*5 ) % 24);
       sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
       VERA.data0 = sprite_frame->frame_addr  >> 5;
       // 16 color mode, and graphic address bits 16:13
