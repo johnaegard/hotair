@@ -23,6 +23,7 @@
 #define MONOPLANE_SPRITE_BASE_ADDR 0x17800
 #define FLAK_SPRITE_BASE_ADDR 0x17B80
 #define CROSSHAIR_SPRITE_BASE_ADDR 0x17F00
+#define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define CHARSET_BASE_ADDR 0x1F000
 
@@ -30,6 +31,7 @@
 #define NEEDLE_SPRITE_FRAME_BYTES 512
 #define MONOPLANE_SPRITE_FRAME_BYTES 128
 #define FLAK_SPRITE_FRAME_BYTES 128
+#define FLAK_BURST_SPRITE_FRAME_BYTES 512
 
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
@@ -198,6 +200,11 @@ unsigned int vscroll;
 signed int xoffset;
 signed int yoffset;
 
+unsigned int flak_burst_screen_x_px;
+unsigned int flak_burst_screen_y_px;
+unsigned char flak_burst_frame;
+unsigned long flak_burst_frame_addr;
+
 bool hide_sprite = false; 
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
@@ -251,6 +258,7 @@ void vera_setup() {
   load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
   load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
   load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  load_into_vera("flak-burst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -486,14 +494,14 @@ void main() {
       xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
       yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
 
-      // if ((abs(xoffset) > ship_screen_x_px)  || (abs(yoffset) > ship_screen_y_px)) {
-      //   hide_sprite = true;
-      //   flak_guns[i]->bearing = 0; 
-      // } 
-      // else {
-      hide_sprite = true;
-      flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px)/18][(yoffset + screen_center_y_px)/16]; 
-      // }
+      if ((abs(xoffset) > screen_center_x_px)  || (abs(yoffset) > screen_center_y_px)) {
+        hide_sprite = true;
+        flak_guns[i]->bearing = 0; 
+      } 
+      else {
+        hide_sprite = false;
+        flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px)/18][(yoffset + screen_center_y_px)/16]; 
+      }
       
       flak_screen_x_px = flak_guns[i]->x_px - hscroll;
       flak_screen_y_px = flak_guns[i]->y_px - vscroll;
@@ -524,6 +532,26 @@ void main() {
       VERA.data0 = crosshair_screen_y_px;
       VERA.data0 = crosshair_screen_y_px >> 8;
       VERA.data0 = 0b00001000 & (SHOW_PREDICTOR ? 0b1111 : 0b0000 );
+      VERA.data0 = 0b10100000; 
+
+      //
+      // FLAK BURST
+      //
+
+      flak_burst_screen_x_px = 50;
+      flak_burst_screen_y_px = 50;
+
+      flak_burst_frame = (game_frame / 3) % 7;
+      flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame  * FLAK_BURST_SPRITE_FRAME_BYTES);
+
+      VERA.data0 = flak_burst_frame_addr  >> 5;
+      // 16 color mode, and graphic address bits 16:13
+      VERA.data0 = 0b10001111 & (flak_burst_frame_addr  >> 13);
+      VERA.data0 = flak_burst_screen_x_px;
+      VERA.data0 = flak_burst_screen_x_px>> 8;
+      VERA.data0 = flak_burst_screen_y_px;
+      VERA.data0 = flak_burst_screen_x_px >> 8;
+      VERA.data0 = 0b00001000;
       VERA.data0 = 0b10100000; 
     }
 

@@ -1,11 +1,14 @@
+* better randomization (wind)
 * flak guns
   x place
-  * track
+  X track
+  * rotate
   * shoot
-    * burst sprite
+    X burst sprite
+    * shell
 * mouse target
 * throttle
-* rescue something
+* rescue / loot something
 * hold steady against wind while rescuring things
 * cloud sprites
 * side view window with basket lowering, lifting ppl up.
@@ -20,14 +23,24 @@
   * score
   * bombs
   * ammunition
+* patch petscii wwith treasure icons
+  * atari
+  * commodore
+  * TI
+  * etc
+* loot!
+  * various pieces of retro kit
 
 
-
-
-  TOOLS USED 
+  TOOLS USED
+  * python 
   * tiled
   * gimp tool 
   * coding in C tutorial
   * 6502 assembler tutorial
   * cc65
+
+  ASSETS 
+  * master484 (flak explosionl)
+
   
