@@ -26,6 +26,7 @@
 #define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define CHARSET_BASE_ADDR 0x1F000
+#define PALETTE_BASE_ADDR 0x1FA00
 
 #define SHIP_SPRITE_FRAME_BYTES 512
 #define NEEDLE_SPRITE_FRAME_BYTES 512
@@ -259,7 +260,8 @@ void vera_setup() {
   load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
   load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   load_into_vera("flak-burst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-
+  load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
+  
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
   VERA.display.vscale = HI_RES ? 128 : 64;
