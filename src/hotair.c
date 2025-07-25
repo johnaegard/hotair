@@ -54,6 +54,7 @@
 #define THRUST_DIVISOR 32
 #define FRICTION_DIVISOR 128
 #define WIND_DIVISOR 512
+#define FLAK_DIVISOR 16
 
 #define MONOPLANE_X_PX 620
 #define MONOPLANE_Y_PX 30
@@ -69,6 +70,7 @@
 #define SHOW_PREDICTOR true
 
 #define NUM_FLAK_SHELLS 8
+#define FLAK_FIRE_CHANCE 100 // of 32767
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
@@ -211,32 +213,24 @@ unsigned int flak_burst_screen_y_px;
 unsigned char flak_burst_frame;
 unsigned long flak_burst_frame_addr;
 
+
+unsigned int flak_shell_x_px;
+unsigned int flak_shell_y_px;
 unsigned int flak_shell_screen_x_px;
 unsigned int flak_shell_screen_y_px;
-unsigned char flak_shell_frame;
-unsigned long flak_shell_frame_addr;
 
 bool hide_sprite = false;
 
 typedef struct {
-  unsigned int x_px;
-  unsigned int y_px;
+  unsigned long x_fpx;
+  unsigned long y_fpx;
   unsigned char bearing;
-  signed int vx_fpx;
-  signed int vy_fpx;
-  bool free;
-  unsigned char fuse;
+  signed long vx_fpx;
+  signed long vy_fpx;
+  bool free;  unsigned char fuse;
 } FlakShell;
 FlakShell* flak_shells[NUM_FLAK_SHELLS];
-
-FlakShell* get_free_flak_shell(void) {
-  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
-    if (flak_shells[i]->free == true) {
-      return flak_shells[i];
-    }
-  }
-  return NULL;  // No free shell found
-}
+FlakShell* flak_shell;
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -446,6 +440,208 @@ void update_ship_bearing(void) {
   bearing_deg = bearing_fdegs >> 6;
   bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
 }
+void update_scroll(void) {
+  hscroll = ship_x_px - (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
+  vscroll = ship_y_px - (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
+  VERA.layer0.hscroll = hscroll;
+  VERA.layer0.vscroll = vscroll;
+}
+void pivot_flak_guns(void) {
+  for (i = 0; i < NUM_FLAK_GUNS; i++) {
+
+    xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
+    yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
+
+    if ((abs(xoffset) > screen_center_x_px) || (abs(yoffset) > screen_center_y_px)) {
+      flak_guns[i]->bearing = 0;
+    }
+    else {
+      flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px) / 18][(yoffset + screen_center_y_px) / 16];
+    }
+  }
+}
+FlakShell* get_free_flak_shell(void) {
+  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
+    if (flak_shells[i]->free == true) {
+      return flak_shells[i];
+    }
+  }
+  return NULL;  // No free shell found
+}
+void update_flak_shells(void) {
+  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
+    flak_shell = flak_shells[i];
+    if (!flak_shell->free) {
+      flak_shell->x_fpx += flak_shell->vx_fpx;
+      flak_shell->y_fpx += flak_shell->vy_fpx;
+
+      if (flak_shell->fuse > 0) {
+        flak_shell->fuse--;
+      }
+      else {
+        flak_shell->free = true; // Mark shell as free when fuse expires
+      }
+    }
+  }
+}
+void fire_flak_guns(void) {
+  for (i = 0; i < NUM_FLAK_GUNS; i++) {
+    if (rand() < FLAK_FIRE_CHANCE) {
+      flak_shell = get_free_flak_shell();
+      if (flak_shell != NULL) {
+        flak_shell->free = false;
+        flak_shell->x_fpx = flak_guns[i]->x_px;
+        flak_shell->x_fpx <<= 16;
+        flak_shell->y_fpx = flak_guns[i]->y_px;
+        flak_shell->y_fpx <<= 16;
+        flak_shell->bearing = flak_guns[i]->bearing;
+        flak_shell->vx_fpx = x_comp_for_bearing[flak_shell->bearing] / FLAK_DIVISOR;
+        flak_shell->vy_fpx = y_comp_for_bearing[flak_shell->bearing] / FLAK_DIVISOR;
+        flak_shell->fuse = 180; // Example fuse duration
+      }
+    }
+  }
+}
+void update_sprites(void) {
+  VERA.address = SPRITE_ATTR_BASE_ADDR;
+  VERA.address_hi = SPRITE_ATTR_BASE_ADDR >> 16;
+  VERA.address_hi |= VERA_INC_1;
+
+  sprite72_frame(sprite_frame, SHIP_SPRITE_BASE_ADDR, SHIP_SPRITE_FRAME_BYTES, bearing_frame);
+
+  VERA.data0 = sprite_frame->frame_addr >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | sprite_frame->frame_addr >> 13;
+  VERA.data0 = ship_screen_x_px;
+  VERA.data0 = ship_screen_x_px >> 8;
+  VERA.data0 = ship_screen_y_px;
+  VERA.data0 = ship_screen_y_px >> 8;
+  VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = 0b10100000; // 32x32 pixel image
+
+  //
+  // WIND INDICATOR NEEDLE
+  //
+  needle_sprite_frame = wind_direction;
+  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
+  VERA.data0 = sprite_frame->frame_addr >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
+  VERA.data0 = WIND_GAUGE_X_PX;
+  VERA.data0 = WIND_GAUGE_X_PX >> 8;
+  VERA.data0 = WIND_GAUGE_Y_PX;
+  VERA.data0 = WIND_GAUGE_Y_PX >> 8;
+  VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = 0b10100000; // 32x32 pixel image
+
+  //
+  // WIND GAUGE CIRCLE
+  //
+  VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BASE_ADDR >> 13);
+  VERA.data0 = WIND_GAUGE_X_PX;
+  VERA.data0 = WIND_GAUGE_X_PX >> 8;
+  VERA.data0 = WIND_GAUGE_Y_PX;
+  VERA.data0 = WIND_GAUGE_Y_PX >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = 0b10100000; // 32x32 pixel image
+
+  //
+  // MONOPLANE
+  //
+  monoplane_frame = ((game_frame / 6) % 24);
+  sprite24_frame(sprite_frame, MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
+  VERA.data0 = sprite_frame->frame_addr >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
+  VERA.data0 = MONOPLANE_X_PX;
+  VERA.data0 = MONOPLANE_X_PX >> 8;
+  VERA.data0 = MONOPLANE_Y_PX;
+  VERA.data0 = MONOPLANE_Y_PX >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
+
+  //
+  // FLAK GUNS
+  //
+  for (i = 0; i < NUM_FLAK_GUNS; i++) {
+
+    xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
+    yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
+
+    if ((abs(xoffset) > screen_center_x_px) || (abs(yoffset) > screen_center_y_px)) {
+      flak_guns[i]->bearing = 0;
+    }
+    else {
+      flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px) / 18][(yoffset + screen_center_y_px) / 16];
+    }
+
+    flak_screen_x_px = flak_guns[i]->x_px - hscroll;
+    flak_screen_y_px = flak_guns[i]->y_px - vscroll;
+
+    sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
+    VERA.data0 = sprite_frame->frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
+    VERA.data0 = flak_screen_x_px;
+    VERA.data0 = flak_screen_x_px >> 8;
+    VERA.data0 = flak_screen_y_px;
+    VERA.data0 = flak_screen_y_px >> 8;
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 | sprite_frame->flips; 
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
+  }
+
+  //
+  // PREDICTOR CROSSHAIR
+  //
+  crosshair_screen_x_px = ship_x_predict_px - hscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
+  crosshair_screen_y_px = ship_y_predict_px - vscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
+
+  VERA.data0 = CROSSHAIR_SPRITE_BASE_ADDR >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (CROSSHAIR_SPRITE_BASE_ADDR >> 13);
+  VERA.data0 = crosshair_screen_x_px;
+  VERA.data0 = crosshair_screen_x_px >> 8;
+  VERA.data0 = crosshair_screen_y_px;
+  VERA.data0 = crosshair_screen_y_px >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 & (SHOW_PREDICTOR ? 0b1111 : 0b0000);
+  VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
+
+  //
+  // FLAK BURST
+  //
+  flak_burst_screen_x_px = 100;
+  flak_burst_screen_y_px = 100;
+
+  flak_burst_frame = (game_frame / 2) % 7;
+  flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame * FLAK_BURST_SPRITE_FRAME_BYTES);
+
+  VERA.data0 = flak_burst_frame_addr >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (flak_burst_frame_addr >> 13);
+  VERA.data0 = flak_burst_screen_x_px;
+  VERA.data0 = flak_burst_screen_x_px >> 8;
+  VERA.data0 = flak_burst_screen_y_px;
+  VERA.data0 = flak_burst_screen_x_px >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1;
+  VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
+
+}
+void update_flak_shell_sprites(void){
+  //
+  // FLAK SHELL
+  //
+  for(i=0;i< NUM_FLAK_SHELLS; i++) {
+    flak_shell_x_px = flak_shells[i]->x_fpx >> 16;
+    flak_shell_y_px = flak_shells[i]->y_fpx >> 16;
+    flak_shell_screen_x_px = flak_shell_x_px - hscroll;
+    flak_shell_screen_y_px = flak_shell_y_px - vscroll;
+    sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shells[i]->bearing);
+    VERA.data0 = sprite_frame->frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_16BPP | (sprite_frame->frame_addr >> 13);
+    VERA.data0 = flak_shell_screen_x_px;
+    VERA.data0 = flak_shell_screen_x_px >> 8;
+    VERA.data0 = flak_shell_screen_y_px;
+    VERA.data0 = flak_shell_screen_y_px >> 8;
+    VERA.data0 = sprite_frame->flips | (! flak_shells[i]->free ? SPRITE_BYTE6_Z_ABOVE_L1 : SPRITE_BYTE6_Z_DISABLED);
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
+  }
+}
+
 
 void main(void) {
   ship_x_fpx = (MAP_WIDTH_TILES * TILE_SIZE_PX / 2);
@@ -468,152 +664,14 @@ void main(void) {
   while (true) {
     update_wind();
     joy = joy_read(0);
-
     update_ship_bearing();
     update_ship_position();
-
-    hscroll = ship_x_px - (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
-    vscroll = ship_y_px - (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
-    VERA.layer0.hscroll = hscroll;
-    VERA.layer0.vscroll = vscroll;
-
-    VERA.address = SPRITE_ATTR_BASE_ADDR;
-    VERA.address_hi = SPRITE_ATTR_BASE_ADDR >> 16;
-    VERA.address_hi |= VERA_INC_1;
-
-    sprite72_frame(sprite_frame, SHIP_SPRITE_BASE_ADDR, SHIP_SPRITE_FRAME_BYTES, bearing_frame);
-
-    VERA.data0 = sprite_frame->frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | sprite_frame->frame_addr >> 13;
-    VERA.data0 = ship_screen_x_px;
-    VERA.data0 = ship_screen_x_px >> 8;
-    VERA.data0 = ship_screen_y_px;
-    VERA.data0 = ship_screen_y_px >> 8;
-    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = 0b10100000; // 32x32 pixel image
-
-    //
-    // WIND INDICATOR NEEDLE
-    //
-    needle_sprite_frame = wind_direction;
-    sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
-    VERA.data0 = sprite_frame->frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
-    VERA.data0 = WIND_GAUGE_X_PX;
-    VERA.data0 = WIND_GAUGE_X_PX >> 8;
-    VERA.data0 = WIND_GAUGE_Y_PX;
-    VERA.data0 = WIND_GAUGE_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = 0b10100000; // 32x32 pixel image
-
-    //
-    // WIND GAUGE CIRCLE
-    //
-    VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BASE_ADDR >> 13);
-    VERA.data0 = WIND_GAUGE_X_PX;
-    VERA.data0 = WIND_GAUGE_X_PX >> 8;
-    VERA.data0 = WIND_GAUGE_Y_PX;
-    VERA.data0 = WIND_GAUGE_Y_PX >> 8;
-    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = 0b10100000; // 32x32 pixel image
-
-    //
-    // MONOPLANE
-    //
-    monoplane_frame = ((game_frame / 6) % 24);
-    sprite24_frame(sprite_frame, MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
-    VERA.data0 = sprite_frame->frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
-    VERA.data0 = MONOPLANE_X_PX;
-    VERA.data0 = MONOPLANE_X_PX >> 8;
-    VERA.data0 = MONOPLANE_Y_PX;
-    VERA.data0 = MONOPLANE_Y_PX >> 8;
-    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
-
-    //
-    // FLAK GUNS
-    //
-    for (i = 0; i < NUM_FLAK_GUNS; i++) {
-
-      xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
-      yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
-
-      if ((abs(xoffset) > screen_center_x_px) || (abs(yoffset) > screen_center_y_px)) {
-        hide_sprite = true;
-        flak_guns[i]->bearing = 0;
-      }
-      else {
-        hide_sprite = false;
-        flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px) / 18][(yoffset + screen_center_y_px) / 16];
-      }
-
-      flak_screen_x_px = flak_guns[i]->x_px - hscroll;
-      flak_screen_y_px = flak_guns[i]->y_px - vscroll;
-
-      sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
-      VERA.data0 = sprite_frame->frame_addr >> 5;
-      VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
-      VERA.data0 = flak_screen_x_px;
-      VERA.data0 = flak_screen_x_px >> 8;
-      VERA.data0 = flak_screen_y_px;
-      VERA.data0 = flak_screen_y_px >> 8;
-      VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 | sprite_frame->flips; 
-      VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
-    }
-
-    //
-    // PREDICTOR CROSSHAIR
-    //
-    crosshair_screen_x_px = ship_x_predict_px - hscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
-    crosshair_screen_y_px = ship_y_predict_px - vscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
-
-    VERA.data0 = CROSSHAIR_SPRITE_BASE_ADDR >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | (CROSSHAIR_SPRITE_BASE_ADDR >> 13);
-    VERA.data0 = crosshair_screen_x_px;
-    VERA.data0 = crosshair_screen_x_px >> 8;
-    VERA.data0 = crosshair_screen_y_px;
-    VERA.data0 = crosshair_screen_y_px >> 8;
-    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 & (SHOW_PREDICTOR ? 0b1111 : 0b0000);
-    VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
-
-    //
-    // FLAK BURST
-    //
-    flak_burst_screen_x_px = 100;
-    flak_burst_screen_y_px = 100;
-
-    flak_burst_frame = (game_frame / 2) % 7;
-    flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame * FLAK_BURST_SPRITE_FRAME_BYTES);
-
-    VERA.data0 = flak_burst_frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_4BPP | (flak_burst_frame_addr >> 13);
-    VERA.data0 = flak_burst_screen_x_px;
-    VERA.data0 = flak_burst_screen_x_px >> 8;
-    VERA.data0 = flak_burst_screen_y_px;
-    VERA.data0 = flak_burst_screen_x_px >> 8;
-    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1;
-    VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
-
-    //
-    // FLAK SHELL
-    //
-    flak_shell_screen_x_px = 560;
-    flak_shell_screen_y_px = 100;
-
-    flak_shell_frame = (game_frame / 7) % 24;
-    sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shell_frame);
-
-    VERA.data0 = sprite_frame->frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_16BPP | (sprite_frame->frame_addr >> 13);
-    VERA.data0 = flak_shell_screen_x_px;
-    VERA.data0 = flak_shell_screen_x_px >> 8;
-    VERA.data0 = flak_shell_screen_y_px;
-    VERA.data0 = flak_shell_screen_y_px >> 8;
-    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2 | sprite_frame->flips; 
-    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
-
+    update_scroll();
+    pivot_flak_guns();
+    update_flak_shells();
+    fire_flak_guns();
+    update_sprites();
+    update_flak_shell_sprites();
     game_frame++;
     wait();
   }
