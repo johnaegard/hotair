@@ -68,6 +68,8 @@
 #define PREDICTOR_LOOKAHEAD_FRAMES 180
 #define SHOW_PREDICTOR true
 
+#define NUM_FLAK_SHELLS 8
+
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 
@@ -216,6 +218,17 @@ unsigned long flak_shell_frame_addr;
 
 bool hide_sprite = false;
 
+typedef struct {
+  unsigned int x_px;
+  unsigned int y_px;
+  unsigned char bearing;
+  signed int vx_fpx;
+  signed int vy_fpx;
+  bool available;
+  unsigned char fuse;
+} FlakShell;
+FlakShell* flak_shells[NUM_FLAK_SHELLS];
+
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
   unsigned char m = 2;
@@ -287,7 +300,6 @@ void vera_setup() {
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 }
-
 void update_wind() {
 
   // wind_direction = (wind_direction +1) % WIND_DIRECTIONS;
@@ -298,6 +310,30 @@ void update_wind() {
     wind_direction = WIND_DIRECTIONS + wind_direction;
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
+}
+void do_mallocs() {
+  for (i = 0; i < NUM_FLAK_GUNS; i++) {
+    flak_guns[i] = malloc(sizeof(FlakGun));
+  }
+  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
+    flak_shells[i] = malloc(sizeof(FlakShell));
+  }
+  sprite_frame = malloc(sizeof(SpriteFrame));
+}
+void setup_flak_guns() { 
+  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
+  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 56;
+
+  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 40;
+  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 56;
+
+  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 40;
+  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 40;
+
+  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 56;
+  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 40;
+
+
 }
 void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
   if (frame >= 19) {
@@ -411,30 +447,16 @@ void main() {
   srand(time(NULL));
   vera_setup();
   joy_install(cx16_std_joy);
+  do_mallocs();
+  setup_flak_guns();
+
   wind_direction = rand() % 24;
-  sprite_frame = malloc(sizeof(SpriteFrame));
-  for (i = 0; i < NUM_FLAK_GUNS; i++) {
-    flak_guns[i] = malloc(NUM_FLAK_GUNS * sizeof(FlakGun));
-  }
-  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
-  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 56;
-
-  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 40;
-  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 56;
-
-  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 40;
-  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 40;
-
-  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 56;
-  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 40;
-
   screen_center_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
   screen_center_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
   ship_screen_x_px = screen_center_x_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
   ship_screen_y_px = screen_center_y_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
 
   while (true) {
-
     update_wind();
     joy = joy_read(0);
 
