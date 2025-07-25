@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "wait.h"
+#include "vera.h"
 
 #define SKIP_2_BYTE_HEADER 0
 #define USE_2_BYTE_HEADER 1
@@ -24,6 +25,7 @@
 #define FLAK_SPRITE_BASE_ADDR 0x17B80
 #define CROSSHAIR_SPRITE_BASE_ADDR 0x17F00
 #define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
+#define FLAK_SHELL_SPRITE_BASE_ADDR 0x18F00
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define CHARSET_BASE_ADDR 0x1F000
 #define PALETTE_BASE_ADDR 0x1FA00
@@ -33,6 +35,7 @@
 #define MONOPLANE_SPRITE_FRAME_BYTES 128
 #define FLAK_SPRITE_FRAME_BYTES 128
 #define FLAK_BURST_SPRITE_FRAME_BYTES 512
+#define FLAK_SHELL_SPRITE_FRAME_BYTES 256
 
 #define MAP_WIDTH_TILES 128
 #define MAP_HEIGHT_TILES 256
@@ -155,7 +158,7 @@ unsigned int turn_rate_fdegs_pf = 240;
 //
 // WIND
 //
-signed char wind_direction =0;
+signed char wind_direction = 0;
 
 //
 // PUTTING SPRITES on SCREEN 
@@ -189,11 +192,11 @@ typedef struct {
   unsigned char bearing;
 } FlakGun;
 
-SpriteFrame *sprite_frame;
-FlakGun *flak_guns[NUM_FLAK_GUNS];
+SpriteFrame* sprite_frame;
+FlakGun* flak_guns[NUM_FLAK_GUNS];
 unsigned char i;
-unsigned int flak_screen_x_px; 
-unsigned int flak_screen_y_px; 
+unsigned int flak_screen_x_px;
+unsigned int flak_screen_y_px;
 
 unsigned int hscroll;
 unsigned int vscroll;
@@ -206,7 +209,12 @@ unsigned int flak_burst_screen_y_px;
 unsigned char flak_burst_frame;
 unsigned long flak_burst_frame_addr;
 
-bool hide_sprite = false; 
+unsigned int flak_shell_screen_x_px;
+unsigned int flak_shell_screen_y_px;
+unsigned char flak_shell_frame;
+unsigned long flak_shell_frame_addr;
+
+bool hide_sprite = false;
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -251,17 +259,18 @@ void vera_setup() {
   asm("lda #2");
   asm("jsr $FF62");
 
-  load_into_vera("map0.bin", MAP0_BASE_ADDR,SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
-  load_into_vera("map1.bin", MAP1_BASE_ADDR,SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
-  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR,SKIP_2_BYTE_HEADER);
-  load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
-  load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR,NO_2_BYTE_HEADER);
+  load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("flak-burst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
-  
+
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
   VERA.display.vscale = HI_RES ? 128 : 64;
@@ -278,100 +287,101 @@ void vera_setup() {
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 }
+
 void update_wind() {
 
   // wind_direction = (wind_direction +1) % WIND_DIRECTIONS;
   if (rand() < WIND_CHANGE_CHANCE) {
-    wind_direction = wind_direction + ((rand() % 3)-1);
+    wind_direction = wind_direction + ((rand() % 3) - 1);
   }
   if (wind_direction < 0) {
     wind_direction = WIND_DIRECTIONS + wind_direction;
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
 }
-void sprite24_frame(SpriteFrame *sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
+void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
   if (frame >= 19) {
     sf->flips = 0b01;
-    sf->frame_addr = base_addr + (frame_size_bytes * (24-frame));
+    sf->frame_addr = base_addr + (frame_size_bytes * (24 - frame));
   }
   else if (frame >= 13) {
     sf->flips = 0b11;
-    sf->frame_addr = base_addr + (frame_size_bytes * (frame-12));
+    sf->frame_addr = base_addr + (frame_size_bytes * (frame - 12));
   }
   else if (frame >= 7) {
     sf->flips = 0b10;
-    sf->frame_addr = base_addr + (frame_size_bytes * (12-frame));
+    sf->frame_addr = base_addr + (frame_size_bytes * (12 - frame));
   }
-  else{
+  else {
     sf->flips = 0b00;
     sf->frame_addr = base_addr + frame_size_bytes * frame;
   }
 }
-void sprite72_frame(SpriteFrame *sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame){
+void sprite72_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
 
-    if (frame >= 0 && frame <= 18) {
-      sf->flips = 0b00;
-      sf->frame_addr = base_addr + (frame_size_bytes * frame);
-    }
-    else if (frame >= 19 && frame <= 36) {
-      sf->flips = 0b10;
-      sf->frame_addr = base_addr
-        + (frame_size_bytes * (36 - frame));
-    }
-    else if (frame >= 37 && frame <= 54) {
-      sf->flips = 0b11;
-      sf->frame_addr = base_addr
-        + (frame_size_bytes * ((frame - 36)));
-    }
-    else if (frame >= 55 && frame <= 71) {
-      sf->flips = 0b01;
-      sf->frame_addr = base_addr
-        + (frame_size_bytes * (72 - frame));
-    }
+  if (frame >= 0 && frame <= 18) {
+    sf->flips = 0b00;
+    sf->frame_addr = base_addr + (frame_size_bytes * frame);
+  }
+  else if (frame >= 19 && frame <= 36) {
+    sf->flips = 0b10;
+    sf->frame_addr = base_addr
+      + (frame_size_bytes * (36 - frame));
+  }
+  else if (frame >= 37 && frame <= 54) {
+    sf->flips = 0b11;
+    sf->frame_addr = base_addr
+      + (frame_size_bytes * ((frame - 36)));
+  }
+  else if (frame >= 55 && frame <= 71) {
+    sf->flips = 0b01;
+    sf->frame_addr = base_addr
+      + (frame_size_bytes * (72 - frame));
+  }
 
 }
-void update_ship_position(){
-    //
-    // THRUST
-    //
-    if (JOY_UP(joy)) {
-      ship_vx_fpx = ship_vx_fpx + x_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
-      ship_vy_fpx = ship_vy_fpx + y_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
-    }
+void update_ship_position() {
+  //
+  // THRUST
+  //
+  if (JOY_UP(joy)) {
+    ship_vx_fpx = ship_vx_fpx + x_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
+    ship_vy_fpx = ship_vy_fpx + y_comp_for_bearing[bearing_frame] / THRUST_DIVISOR;
+  }
 
-    //
-    // FRICTION
-    //
-    ship_vx_fpx -= ship_vx_fpx / FRICTION_DIVISOR;
-    ship_vy_fpx -= ship_vy_fpx / FRICTION_DIVISOR;
+  //
+  // FRICTION
+  //
+  ship_vx_fpx -= ship_vx_fpx / FRICTION_DIVISOR;
+  ship_vy_fpx -= ship_vy_fpx / FRICTION_DIVISOR;
 
-    //
-    // WIND
-    //
-    if (WIND_ON) {
-      ship_vx_fpx += x_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
-      ship_vy_fpx += y_comp_for_bearing[wind_direction*3] / WIND_DIVISOR;
-    }
+  //
+  // WIND
+  //
+  if (WIND_ON) {
+    ship_vx_fpx += x_comp_for_bearing[wind_direction * 3] / WIND_DIVISOR;
+    ship_vy_fpx += y_comp_for_bearing[wind_direction * 3] / WIND_DIVISOR;
+  }
 
-    // 
-    // UPDATE VELOCITY
-    //
-    ship_x_fpx += ship_vx_fpx;
-    ship_y_fpx += ship_vy_fpx;
+  // 
+  // UPDATE VELOCITY
+  //
+  ship_x_fpx += ship_vx_fpx;
+  ship_y_fpx += ship_vy_fpx;
 
-    //
-    // DIVIDE BY 256 to go from fpx to px
-    //
-    ship_x_px = ship_x_fpx >> 16;
-    ship_y_px = ship_y_fpx >> 16;
+  //
+  // DIVIDE BY 256 to go from fpx to px
+  //
+  ship_x_px = ship_x_fpx >> 16;
+  ship_y_px = ship_y_fpx >> 16;
 
-    //
-    // FORECAST
-    //
-     ship_x_predict_fpx = ship_x_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vx_fpx);
-     ship_y_predict_fpx = ship_y_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vy_fpx);
-     ship_x_predict_px = ship_x_predict_fpx >> 16;
-     ship_y_predict_px = ship_y_predict_fpx >> 16;
+  //
+  // FORECAST
+  //
+  ship_x_predict_fpx = ship_x_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vx_fpx);
+  ship_y_predict_fpx = ship_y_fpx + (PREDICTOR_LOOKAHEAD_FRAMES * ship_vy_fpx);
+  ship_x_predict_px = ship_x_predict_fpx >> 16;
+  ship_y_predict_px = ship_y_predict_fpx >> 16;
 
 }
 void update_ship_bearing() {
@@ -403,7 +413,7 @@ void main() {
   joy_install(cx16_std_joy);
   wind_direction = rand() % 24;
   sprite_frame = malloc(sizeof(SpriteFrame));
-  for(i=0; i< NUM_FLAK_GUNS; i++) {
+  for (i = 0; i < NUM_FLAK_GUNS; i++) {
     flak_guns[i] = malloc(NUM_FLAK_GUNS * sizeof(FlakGun));
   }
   flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
@@ -436,19 +446,14 @@ void main() {
     VERA.layer0.hscroll = hscroll;
     VERA.layer0.vscroll = vscroll;
 
-    // Point to Sprite 1
     VERA.address = SPRITE_ATTR_BASE_ADDR;
     VERA.address_hi = SPRITE_ATTR_BASE_ADDR >> 16;
-    // Set the Increment Mode, turn on bit 4
-    VERA.address_hi |= 0b10000;
+    VERA.address_hi |= VERA_INC_1;
 
     sprite72_frame(sprite_frame, SHIP_SPRITE_BASE_ADDR, SHIP_SPRITE_FRAME_BYTES, bearing_frame);
 
-    // Configure Sprite 1
-    // Graphic address bits 12:5
     VERA.data0 = sprite_frame->frame_addr >> 5;
-    // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & sprite_frame->frame_addr >> 13;
+    VERA.data0 = SPRITE_BYTE1_4BPP | sprite_frame->frame_addr >> 13;
     VERA.data0 = ship_screen_x_px;
     VERA.data0 = ship_screen_x_px >> 8;
     VERA.data0 = ship_screen_y_px;
@@ -456,12 +461,13 @@ void main() {
     VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
+    //
+    // WIND INDICATOR NEEDLE
+    //
     needle_sprite_frame = wind_direction;
-    sprite24_frame(sprite_frame,NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
-
+    sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
     VERA.data0 = sprite_frame->frame_addr >> 5;
-    // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr >> 13);
+    VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
     VERA.data0 = WIND_GAUGE_X_PX;
     VERA.data0 = WIND_GAUGE_X_PX >> 8;
     VERA.data0 = WIND_GAUGE_Y_PX;
@@ -469,93 +475,113 @@ void main() {
     VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
+    //
+    // WIND GAUGE CIRCLE
+    //
     VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
-    // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (CIRCLE_SPRITE_BASE_ADDR >> 13);
+    VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BASE_ADDR >> 13);
     VERA.data0 = WIND_GAUGE_X_PX;
     VERA.data0 = WIND_GAUGE_X_PX >> 8;
     VERA.data0 = WIND_GAUGE_Y_PX;
     VERA.data0 = WIND_GAUGE_Y_PX >> 8;
-    VERA.data0 = 0b00001100; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
     VERA.data0 = 0b10100000; // 32x32 pixel image
 
+    //
+    // MONOPLANE
+    //
     monoplane_frame = ((game_frame / 6) % 24);
     sprite24_frame(sprite_frame, MONOPLANE_SPRITE_BASE_ADDR, MONOPLANE_SPRITE_FRAME_BYTES, monoplane_frame);
-    VERA.data0 = sprite_frame->frame_addr  >> 5;
-    // 16 color mode, and graphic address bits 16:13
-    VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
+    VERA.data0 = sprite_frame->frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
     VERA.data0 = MONOPLANE_X_PX;
     VERA.data0 = MONOPLANE_X_PX >> 8;
     VERA.data0 = MONOPLANE_Y_PX;
     VERA.data0 = MONOPLANE_Y_PX >> 8;
-    VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
-    VERA.data0 = 0b01010000; 
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
 
-    for(i=0; i< NUM_FLAK_GUNS; i++){
+    //
+    // FLAK GUNS
+    //
+    for (i = 0; i < NUM_FLAK_GUNS; i++) {
 
       xoffset = (ship_x_predict_px - flak_guns[i]->x_px);
       yoffset = (flak_guns[i]->y_px - ship_y_predict_px);
 
-      if ((abs(xoffset) > screen_center_x_px)  || (abs(yoffset) > screen_center_y_px)) {
+      if ((abs(xoffset) > screen_center_x_px) || (abs(yoffset) > screen_center_y_px)) {
         hide_sprite = true;
-        flak_guns[i]->bearing = 0; 
-      } 
+        flak_guns[i]->bearing = 0;
+      }
       else {
         hide_sprite = false;
-        flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px)/18][(yoffset + screen_center_y_px)/16]; 
+        flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px) / 18][(yoffset + screen_center_y_px) / 16];
       }
-      
+
       flak_screen_x_px = flak_guns[i]->x_px - hscroll;
       flak_screen_y_px = flak_guns[i]->y_px - vscroll;
 
       sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
-      VERA.data0 = sprite_frame->frame_addr  >> 5;
-      // 16 color mode, and graphic address bits 16:13
-      VERA.data0 = 0b10001111 & (sprite_frame->frame_addr  >> 13);
+      VERA.data0 = sprite_frame->frame_addr >> 5;
+      VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
       VERA.data0 = flak_screen_x_px;
       VERA.data0 = flak_screen_x_px >> 8;
       VERA.data0 = flak_screen_y_px;
       VERA.data0 = flak_screen_y_px >> 8;
-      VERA.data0 = 0b00001000 | sprite_frame->flips; // Z-Depth=2, Sprite behind layer 1
-      VERA.data0 = 0b01010000; 
-
-      //
-      // CROSSHAIR
-      //
-
-      crosshair_screen_x_px = ship_x_predict_px - hscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS/2);
-      crosshair_screen_y_px = ship_y_predict_px - vscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS/2);
-
-      VERA.data0 = CROSSHAIR_SPRITE_BASE_ADDR  >> 5;
-      // 16 color mode, and graphic address bits 16:13
-      VERA.data0 = 0b10001111 & (CROSSHAIR_SPRITE_BASE_ADDR  >> 13);
-      VERA.data0 = crosshair_screen_x_px;
-      VERA.data0 = crosshair_screen_x_px >> 8;
-      VERA.data0 = crosshair_screen_y_px;
-      VERA.data0 = crosshair_screen_y_px >> 8;
-      VERA.data0 = 0b00001000 & (SHOW_PREDICTOR ? 0b1111 : 0b0000 );
-      VERA.data0 = 0b10100000; 
-
-      //
-      // FLAK BURST
-      //
-
-      flak_burst_screen_x_px = 100;
-      flak_burst_screen_y_px = 100;
-
-      flak_burst_frame = (game_frame / 2) % 7;
-      flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame  * FLAK_BURST_SPRITE_FRAME_BYTES);
-
-      VERA.data0 = flak_burst_frame_addr  >> 5;
-      // 16 color mode, and graphic address bits 16:13
-      VERA.data0 = 0b10001111 & (flak_burst_frame_addr  >> 13);
-      VERA.data0 = flak_burst_screen_x_px;
-      VERA.data0 = flak_burst_screen_x_px>> 8;
-      VERA.data0 = flak_burst_screen_y_px;
-      VERA.data0 = flak_burst_screen_x_px >> 8;
-      VERA.data0 = 0b00001000;
-      VERA.data0 = 0b10100000; 
+      VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 | sprite_frame->flips; 
+      VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
     }
+
+    //
+    // PREDICTOR CROSSHAIR
+    //
+    crosshair_screen_x_px = ship_x_predict_px - hscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
+    crosshair_screen_y_px = ship_y_predict_px - vscroll - (CROSSHAIR_SPRITE_SIZE_PIXELS / 2);
+
+    VERA.data0 = CROSSHAIR_SPRITE_BASE_ADDR >> 5;
+    VERA.data0 = SPRITE_BYTE1_4BPP | (CROSSHAIR_SPRITE_BASE_ADDR >> 13);
+    VERA.data0 = crosshair_screen_x_px;
+    VERA.data0 = crosshair_screen_x_px >> 8;
+    VERA.data0 = crosshair_screen_y_px;
+    VERA.data0 = crosshair_screen_y_px >> 8;
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 & (SHOW_PREDICTOR ? 0b1111 : 0b0000);
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
+
+    //
+    // FLAK BURST
+    //
+    flak_burst_screen_x_px = 100;
+    flak_burst_screen_y_px = 100;
+
+    flak_burst_frame = (game_frame / 2) % 7;
+    flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame * FLAK_BURST_SPRITE_FRAME_BYTES);
+
+    VERA.data0 = flak_burst_frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_4BPP | (flak_burst_frame_addr >> 13);
+    VERA.data0 = flak_burst_screen_x_px;
+    VERA.data0 = flak_burst_screen_x_px >> 8;
+    VERA.data0 = flak_burst_screen_y_px;
+    VERA.data0 = flak_burst_screen_x_px >> 8;
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1;
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
+
+    //
+    // FLAK SHELL
+    //
+    flak_shell_screen_x_px = 560;
+    flak_shell_screen_y_px = 100;
+
+    flak_shell_frame = (game_frame / 7) % 24;
+    sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shell_frame);
+
+    VERA.data0 = sprite_frame->frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_16BPP | (sprite_frame->frame_addr >> 13);
+    VERA.data0 = flak_shell_screen_x_px;
+    VERA.data0 = flak_shell_screen_x_px >> 8;
+    VERA.data0 = flak_shell_screen_y_px;
+    VERA.data0 = flak_shell_screen_y_px >> 8;
+    VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2 | sprite_frame->flips; 
+    VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
 
     game_frame++;
     wait();
