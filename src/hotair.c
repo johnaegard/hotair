@@ -224,10 +224,19 @@ typedef struct {
   unsigned char bearing;
   signed int vx_fpx;
   signed int vy_fpx;
-  bool available;
+  bool free;
   unsigned char fuse;
 } FlakShell;
 FlakShell* flak_shells[NUM_FLAK_SHELLS];
+
+FlakShell* get_free_flak_shell(void) {
+  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
+    if (flak_shells[i]->free == true) {
+      return flak_shells[i];
+    }
+  }
+  return NULL;  // No free shell found
+}
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -265,7 +274,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
 }
-void vera_setup() {
+void vera_setup(void) {
 
   // petsci upper / gfx
 
@@ -300,7 +309,7 @@ void vera_setup() {
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 }
-void update_wind() {
+void update_wind(void) {
 
   // wind_direction = (wind_direction +1) % WIND_DIRECTIONS;
   if (rand() < WIND_CHANGE_CHANCE) {
@@ -311,7 +320,7 @@ void update_wind() {
   }
   wind_direction = wind_direction % WIND_DIRECTIONS;
 }
-void do_mallocs() {
+void do_mallocs(void) {
   for (i = 0; i < NUM_FLAK_GUNS; i++) {
     flak_guns[i] = malloc(sizeof(FlakGun));
   }
@@ -320,7 +329,7 @@ void do_mallocs() {
   }
   sprite_frame = malloc(sizeof(SpriteFrame));
 }
-void setup_flak_guns() { 
+void setup_flak_guns(void) {
   flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
   flak_guns[0]->y_px = (ship_y_fpx >> 16) - 56;
 
@@ -376,7 +385,7 @@ void sprite72_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame
   }
 
 }
-void update_ship_position() {
+void update_ship_position(void) {
   //
   // THRUST
   //
@@ -420,7 +429,7 @@ void update_ship_position() {
   ship_y_predict_px = ship_y_predict_fpx >> 16;
 
 }
-void update_ship_bearing() {
+void update_ship_bearing(void) {
   if (JOY_LEFT(joy)) {
     bearing_fdegs = bearing_fdegs - turn_rate_fdegs_pf;
     if (bearing_fdegs < 0) {
@@ -438,7 +447,7 @@ void update_ship_bearing() {
   bearing_frame = (bearing_deg / (DEGREES_PER_FACING)) % NUM_SHIP_BEARINGS;
 }
 
-void main() {
+void main(void) {
   ship_x_fpx = (MAP_WIDTH_TILES * TILE_SIZE_PX / 2);
   ship_x_fpx = ship_x_fpx << 16;
   ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
