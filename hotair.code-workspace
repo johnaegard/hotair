@@ -14,6 +14,7 @@
 		"workbench.colorCustomizations": {
 			"editorCursor.foreground": "#ffff00",
 			"terminalCursor.foreground": "#ff3300"
-		}
+		},
+		"makefile.configureOnOpen": false
 	}
 }
