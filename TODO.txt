@@ -2,9 +2,12 @@
   x place
   X track
   * rotate
-  * shoot
+  X shoot
     X burst sprite
-    * shell
+    X shell
+  * shells explode
+  * shells issue from barrels
+  * sparkly shell bug
 * better randomization (wind)
 * mouse target
 * throttle
