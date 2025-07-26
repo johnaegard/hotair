@@ -6,8 +6,10 @@
     X burst sprite
     X shell
   * shells explode
+  * shells have a target and not just a 
   * shells issue from barrels
-  * sparkly shell bug
+  X sparkly shell bug
+
 * better randomization (wind)
 * mouse target
 * throttle
