@@ -49,6 +49,8 @@
 #define HI_RES true
 #define WIND_GAUGE_X_PX 600
 #define WIND_GAUGE_Y_PX 440
+#define FLAK_GUN_SPRITE_SIZE_PIXELS 16
+#define FLAK_SHELL_SPRITE_SIZE_PIXELS 16
 #define FLAK_BURST_SPRITE_SIZE_PIXELS 32
 
 #define WIND_ON false 
@@ -74,11 +76,11 @@
 #define PREDICTOR_LOOKAHEAD_FRAMES 180
 #define SHOW_PREDICTOR true
 
-#define NUM_FLAK_SHELLS 6
-#define FLAK_FIRE_CHANCE 100 // of 32767
+#define NUM_FLAK_SHELLS 20
+#define FLAK_FIRE_CHANCE 800 // of 32767
 #define FLAK_SHELL_FUSE_FRAMES 65
 
-#define FLAK_BURST_FRAMES_PER_FRAME 30
+#define FLAK_BURST_FRAMES_PER_FRAME 4
 #define FLAK_BURST_FRAMES 7
 
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
@@ -213,7 +215,6 @@ unsigned int vscroll;
 signed int xoffset;
 signed int yoffset;
 bool hide_sprite = false;
-
 
 unsigned int flak_burst_screen_x_px;
 unsigned int flak_burst_screen_y_px;
@@ -465,11 +466,11 @@ void vera_scroll(void) {
   VERA.layer0.vscroll = vscroll;
 }
 void update_sprites(void) {
+  char i;
+
 #ifdef DEBUG_CONSOLE
   return;
 #endif
-
-  char i;
 
   VERA.address = SPRITE_ATTR_BASE_ADDR;
   VERA.address_hi = SPRITE_ATTR_BASE_ADDR >> 16;
@@ -541,8 +542,8 @@ void update_sprites(void) {
       flak_guns[i]->bearing = angle_lookup[(xoffset + screen_center_x_px) / 18][(yoffset + screen_center_y_px) / 16];
     }
 
-    flak_screen_x_px = flak_guns[i]->x_px - hscroll;
-    flak_screen_y_px = flak_guns[i]->y_px - vscroll;
+    flak_screen_x_px = flak_guns[i]->x_px - hscroll - (FLAK_GUN_SPRITE_SIZE_PIXELS / 2);
+    flak_screen_y_px = flak_guns[i]->y_px - vscroll - (FLAK_GUN_SPRITE_SIZE_PIXELS / 2);
 
     sprite24_frame(sprite_frame, FLAK_SPRITE_BASE_ADDR, FLAK_SPRITE_FRAME_BYTES, flak_guns[i]->bearing);
     VERA.data0 = sprite_frame->frame_addr >> 5;
@@ -570,24 +571,6 @@ void update_sprites(void) {
   VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1 & (SHOW_PREDICTOR ? 0b1111 : 0b0000);
   VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
 
-  //
-  // FLAK BURST
-  //
-  // flak_burst_screen_x_px = 100;
-  // flak_burst_screen_y_px = 100;
-
-  // flak_burst_frame = (game_frame / 2) % 7;
-  // flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_burst_frame * FLAK_BURST_SPRITE_FRAME_BYTES);
-
-  // VERA.data0 = flak_burst_frame_addr >> 5;
-  // VERA.data0 = SPRITE_BYTE1_4BPP | (flak_burst_frame_addr >> 13);
-  // VERA.data0 = flak_burst_screen_x_px;
-  // VERA.data0 = flak_burst_screen_x_px >> 8;
-  // VERA.data0 = flak_burst_screen_y_px;
-  // VERA.data0 = flak_burst_screen_x_px >> 8;
-  // VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L1;
-  // VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
-
 }
 
 //
@@ -595,18 +578,17 @@ void update_sprites(void) {
 // 
 void setup_flak_guns(void) {
   
-  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 56;
-  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 56;
+  flak_guns[0]->x_px = (ship_x_fpx >> 16) - 48;
+  flak_guns[0]->y_px = (ship_y_fpx >> 16) - 48;
 
-  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 40;
-  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 56;
+  flak_guns[1]->x_px = (ship_x_fpx >> 16) + 48;
+  flak_guns[1]->y_px = (ship_y_fpx >> 16) - 48;
 
-  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 40;
-  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 40;
+  flak_guns[2]->x_px = (ship_x_fpx >> 16) + 48;
+  flak_guns[2]->y_px = (ship_y_fpx >> 16) + 48;
 
-  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 56;
-  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 40;
-
+  flak_guns[3]->x_px = (ship_x_fpx >> 16) - 48;
+  flak_guns[3]->y_px = (ship_y_fpx >> 16) + 48;
 
 }
 void pivot_flak_guns(void) {
@@ -644,9 +626,6 @@ void fire_flak_guns(void) {
  char gun;
   for (gun = 0; gun < NUM_FLAK_GUNS; gun++) {
     roll = rand();
-#ifdef DEBUG_CONSOLE
-    printf("flak gun %d fire check roll: %d\n", gun, roll);
-#endif
     if (roll < FLAK_FIRE_CHANCE) {
       flak_shell = get_free_flak_shell();
       if (flak_shell != NULL) {
@@ -676,28 +655,36 @@ FlakBurst* get_free_flak_burst(void) {
   return NULL;  // No free burst found
 }
 void update_flak_shells(void) {
-  char i;
-  for (i = 0; i < NUM_FLAK_SHELLS; i++) {
-    if (!flak_shells[i]->free) {
-      flak_shells[i]->x_fpx += flak_shells[i]->vx_fpx;
-      flak_shells[i]->y_fpx += flak_shells[i]->vy_fpx;
+  char shell;
+  for (shell = 0; shell < NUM_FLAK_SHELLS; shell++) {
+    if (!flak_shells[shell]->free) {
+      flak_shells[shell]->x_fpx += flak_shells[shell]->vx_fpx;
+      flak_shells[shell]->y_fpx += flak_shells[shell]->vy_fpx;
 
-      if (flak_shells[i]->fuse > 0) {
-        flak_shells[i]->fuse--;
+      if (flak_shells[shell]->fuse > 0) {
+        flak_shells[shell]->fuse--;
       }
       else {
 #ifdef DEBUG_CONSOLE
-        printf("flak shell %d fuse expired\n", flak_shells[i]->index);
+        printf("flak shell %d fuse expired\n", flak_shells[shell]->index);
 #endif  
-        flak_shells[i]->free = true;
+        flak_shells[shell]->free = true;
         // flak shell explodes
         flak_burst = get_free_flak_burst();
         if (flak_burst != NULL) {
           flak_burst->free = false;
-          flak_burst->x_px = flak_shells[i]->x_fpx >> 16;
-          flak_burst->y_px = flak_shells[i]->y_fpx >> 16;
+          flak_burst->x_px = flak_shells[shell]->x_fpx >> 16;
+          flak_burst->y_px = flak_shells[shell]->y_fpx >> 16;
+#ifdef DEBUG_CONSOLE
+          printf("flak shell %d exploded at (%ld, %ld)\n", flak_shells[shell]->index, flak_burst->x_px, flak_burst->y_px);
+#endif
           flak_burst->exploded_game_frame = game_frame;
           flak_burst->frame = 0;
+        }
+        else{
+#ifdef DEBUG_CONSOLE
+          printf("flak shell %d has no burst available\n", flak_shells[shell]->index);
+#endif
         }
       }
 #ifdef DEBUG_CONSOLE
@@ -709,11 +696,16 @@ void update_flak_shells(void) {
 }
 void update_flak_shell_sprites(void){
   char shell;
+
+#ifdef DEBUG_CONSOLE
+  return;
+#endif
+
   for(shell=0; shell< NUM_FLAK_SHELLS; shell++) {
     flak_shell_x_px = flak_shells[shell]->x_fpx >> 16;
     flak_shell_y_px = flak_shells[shell]->y_fpx >> 16;
-    flak_shell_screen_x_px = flak_shell_x_px - hscroll;
-    flak_shell_screen_y_px = flak_shell_y_px - vscroll;
+    flak_shell_screen_x_px = flak_shell_x_px - hscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
+    flak_shell_screen_y_px = flak_shell_y_px - vscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
 
     sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shells[shell]->bearing);
     VERA.data0 = sprite_frame->frame_addr >> 5;
@@ -722,7 +714,7 @@ void update_flak_shell_sprites(void){
     VERA.data0 = flak_shell_screen_x_px >> 8;
     VERA.data0 = flak_shell_screen_y_px;
     VERA.data0 = flak_shell_screen_y_px >> 8;
-    VERA.data0 = sprite_frame->flips | (flak_shells[shell]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L2);
+    VERA.data0 = sprite_frame->flips | (flak_shells[shell]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L1);
     VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
   }
 }
@@ -748,11 +740,18 @@ void update_flak_bursts(void) {
 }
 void update_flak_burst_sprites(void) {
   char burst;
-  for (burst = 0; burst < NUM_FLAK_SHELLS; burst++) {
-    flak_burst_screen_x_px = flak_burst_x_px - hscroll - (FLAK_BURST_SPRITE_SIZE_PIXELS / 2);
-    flak_burst_screen_y_px = flak_burst_y_px - vscroll - (FLAK_BURST_SPRITE_SIZE_PIXELS / 2);
 
+  for (burst = 0; burst < NUM_FLAK_SHELLS; burst++) {
+    flak_burst_screen_x_px = flak_bursts[burst]->x_px  - hscroll - (FLAK_BURST_SPRITE_SIZE_PIXELS / 2);
+    flak_burst_screen_y_px = flak_bursts[burst]->y_px  - vscroll - (FLAK_BURST_SPRITE_SIZE_PIXELS / 2);
     flak_burst_frame_addr = FLAK_BURST_SPRITE_BASE_ADDR + (flak_bursts[burst]->frame * FLAK_BURST_SPRITE_FRAME_BYTES);
+
+#ifdef DEBUG_CONSOLE
+    if (! flak_bursts[burst]->free) {
+      printf("rendering flak burst %d at (%d, %d)\n", burst, flak_burst_screen_x_px, flak_burst_screen_y_px);
+    }
+    continue;
+#endif
 
     VERA.data0 = flak_burst_frame_addr >> 5;
     VERA.data0 = SPRITE_BYTE1_4BPP | (flak_burst_frame_addr >> 13);
@@ -760,7 +759,7 @@ void update_flak_burst_sprites(void) {
     VERA.data0 = flak_burst_screen_x_px >> 8;
     VERA.data0 = flak_burst_screen_y_px;
     VERA.data0 = flak_burst_screen_y_px >> 8;
-    VERA.data0 = (flak_bursts[burst]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L2);
+    VERA.data0 = (flak_bursts[burst]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L1);
     VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
   }
 }
@@ -785,19 +784,22 @@ void main(void) {
   ship_screen_y_px = screen_center_y_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
 
   while (true) {
-    update_wind();
     joy = joy_read(0);
+
+    update_wind();
     update_ship_bearing();
     update_ship_position();
     update_scroll();
-    vera_scroll();
     pivot_flak_guns();
     update_flak_shells();
     update_flak_bursts();
     fire_flak_guns();
+
+    vera_scroll();
     update_sprites();
     update_flak_shell_sprites();
     update_flak_burst_sprites();
+
     game_frame++;
     wait();
   }
