@@ -1,14 +1,9 @@
 * flak guns
-  x place
-  X track
-  * rotate
-  X shoot
-    X burst sprite
-    X shell
-  * shells explode
-  * shells have a target and not just a 
-  * shells issue from barrels
-  X sparkly shell bug
+  * rotate and don't just teleport to the new rotation.
+  * shells have a target and not just a fuse
+* bomb attacks
+  * bomb sprite
+  * petscii explosion
 
 * better randomization (wind)
 * mouse target
@@ -20,7 +15,6 @@
 * radar
 * animated prop blades
 * bomb attack
-  * ascii explosion
 * make playfield use 16-pixel tiles that are composites of petscii tiles -- will increase the size of the map by 4x.
 * intro and logo screen
 * dashboard
