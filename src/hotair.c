@@ -61,7 +61,7 @@
 #define THRUST_DIVISOR 32
 #define FRICTION_DIVISOR 128
 #define WIND_DIVISOR 512
-#define FLAK_SHELL_VELOCITY_MULTIPLIER 8
+#define FLAK_SHELL_VELOCITY_MULTIPLIER 4
 
 #define MONOPLANE_X_PX 620
 #define MONOPLANE_Y_PX 30
@@ -222,11 +222,11 @@ unsigned char flak_burst_frame;
 unsigned long flak_burst_frame_addr;
 
 typedef struct {
-  unsigned long x_fpx;
-  unsigned long y_fpx;
+  unsigned int x_12_4_fpx;
+  unsigned int y_12_4_fpx;
   unsigned char bearing;
-  signed long vx_fpx;
-  signed long vy_fpx;
+  signed int vx_12_4_fpx;
+  signed int vy_12_4_fpx;
   bool free;
   unsigned char fuse;
   unsigned char index;
@@ -353,6 +353,9 @@ void do_mallocs(void) {
   sprite_frame = malloc(sizeof(SpriteFrame));
 }
 void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
+
+  // TODO: Change this to use a lookup table for better performance
+
   if (frame >= 19) {
     sf->flips = 0b01;
     sf->frame_addr = base_addr + (frame_size_bytes * (24 - frame));
@@ -628,13 +631,15 @@ void fire_flak_guns(void) {
       flak_shell = (FlakShell*)get_free_object_from_pool((void**)flak_shell_pool, NUM_FLAK_SHELLS, (unsigned char)&((FlakShell*)0)->free);
       if (flak_shell != NULL) {
         flak_shell->free = false;
-        flak_shell->x_fpx = flak_guns[gun]->x_px;
-        flak_shell->x_fpx <<= 16;
-        flak_shell->y_fpx = flak_guns[gun]->y_px;
-        flak_shell->y_fpx <<= 16;
+        flak_shell->x_12_4_fpx = flak_guns[gun]->x_px;
+        flak_shell->x_12_4_fpx <<= 4;
+        flak_shell->y_12_4_fpx = flak_guns[gun]->y_px;
+        flak_shell->y_12_4_fpx <<= 4;
         flak_shell->bearing = flak_guns[gun]->bearing;
-        flak_shell->vx_fpx = x_comp_for_bearing[flak_shell->bearing*3] * FLAK_SHELL_VELOCITY_MULTIPLIER;
-        flak_shell->vy_fpx = y_comp_for_bearing[flak_shell->bearing*3] * FLAK_SHELL_VELOCITY_MULTIPLIER;
+
+        flak_shell->vx_12_4_fpx = (x_comp_for_bearing[flak_shell->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
+        flak_shell->vy_12_4_fpx = (y_comp_for_bearing[flak_shell->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
+
         flak_shell->fuse = FLAK_SHELL_FUSE_FRAMES;
 #ifdef DEBUG_CONSOLE
         printf("flak gun %d fired flak shell %d\n", gun, flak_shell->index);
@@ -647,8 +652,8 @@ void update_flak_shells(void) {
   char shell;
   for (shell = 0; shell < NUM_FLAK_SHELLS; shell++) {
     if (!flak_shell_pool[shell]->free) {
-      flak_shell_pool[shell]->x_fpx += flak_shell_pool[shell]->vx_fpx;
-      flak_shell_pool[shell]->y_fpx += flak_shell_pool[shell]->vy_fpx;
+      flak_shell_pool[shell]->x_12_4_fpx += flak_shell_pool[shell]->vx_12_4_fpx;
+      flak_shell_pool[shell]->y_12_4_fpx += flak_shell_pool[shell]->vy_12_4_fpx;
 
       if (flak_shell_pool[shell]->fuse > 0) {
         flak_shell_pool[shell]->fuse--;
@@ -662,8 +667,8 @@ void update_flak_shells(void) {
         flak_burst = (FlakBurst*)get_free_object_from_pool((void**)flak_burst_pool, NUM_FLAK_SHELLS, (unsigned char)&((FlakBurst*)0)->free);
         if (flak_burst != NULL) {
           flak_burst->free = false;
-          flak_burst->x_px = flak_shell_pool[shell]->x_fpx >> 16;
-          flak_burst->y_px = flak_shell_pool[shell]->y_fpx >> 16;
+          flak_burst->x_px = flak_shell_pool[shell]->x_12_4_fpx >> 4;
+          flak_burst->y_px = flak_shell_pool[shell]->y_12_4_fpx >> 4;
 #ifdef DEBUG_CONSOLE
           printf("flak shell %d exploded at (%ld, %ld)\n", flak_shells[shell]->index, flak_burst->x_px, flak_burst->y_px);
 #endif
@@ -685,16 +690,18 @@ void update_flak_shells(void) {
 }
 void update_flak_shell_sprites(void){
   char shell;
+  int flak_shell_xoff_px = hscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
+  int flak_shell_yoff_px = vscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
 
 #ifdef DEBUG_CONSOLE
   return;
 #endif
 
   for(shell=0; shell< NUM_FLAK_SHELLS; shell++) {
-    flak_shell_x_px = flak_shell_pool[shell]->x_fpx >> 16;
-    flak_shell_y_px = flak_shell_pool[shell]->y_fpx >> 16;
-    flak_shell_screen_x_px = flak_shell_x_px - hscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
-    flak_shell_screen_y_px = flak_shell_y_px - vscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
+    flak_shell_x_px = flak_shell_pool[shell]->x_12_4_fpx >> 4;
+    flak_shell_y_px = flak_shell_pool[shell]->y_12_4_fpx >> 4;
+    flak_shell_screen_x_px = flak_shell_x_px - flak_shell_xoff_px;
+    flak_shell_screen_y_px = flak_shell_y_px - flak_shell_yoff_px;
 
     sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shell_pool[shell]->bearing);
     VERA.data0 = sprite_frame->frame_addr >> 5;
