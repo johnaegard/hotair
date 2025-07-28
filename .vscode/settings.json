@@ -3,5 +3,5 @@
     "editorCursor.foreground": "#ffff00",
     "terminalCursor.foreground": "#ff3300"
 },
-"C_Cpp.default.compilerPath": "/usr/bin/cc65"
+"C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

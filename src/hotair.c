@@ -801,10 +801,10 @@ void update_flak_burst_sprites(void) {
 }
 
 #define FIRE_NUM_FG_COLORS 4
-#define FIRE_NUM_BG_COLORS 2
+#define FIRE_NUM_BG_COLORS 8
 
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x0, 0x1, 0x07, 0x0A};
-unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x2, 0x8};
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x1, 0x07, 0xA};
+unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x0, 0x2, 0x2, 0x07, 0x8, 0x8, 0x8, 0x8};
 
 void fire(unsigned char col, unsigned char row, unsigned char size) {
   unsigned char r,c,color;
