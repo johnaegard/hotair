@@ -773,6 +773,22 @@ void update_flak_burst_sprites(void) {
   }
 }
 
+void fire(unsigned char col, unsigned char row, unsigned char size) {
+  char r,c;
+  unsigned long addr;
+
+  for (r = 0; r < size; r++) {
+    for (c = 0; c < size; c++) {
+      addr = MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
+      VERA.address = addr;
+      VERA.address_hi = addr >> 16;
+      VERA.address_hi |= VERA_INC_1;
+      VERA.data0 = 0x40 + (rand() % 0x40);
+      VERA.data0 = rand() % 255;
+    }
+  }
+}
+
 void main(void) {
 
   bool run = true;
@@ -820,6 +836,10 @@ void main(void) {
     update_flak_shell_sprites();
     update_flak_burst_sprites();
 
+    // if (game_frame % 30 == 0) {
+    //   fire(64,148,4);
+    // }
+
     game_frame++;
     wait();
   }
@@ -832,7 +852,6 @@ void main(void) {
   VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
   VERA.display.hscale = 64;         // Reset scale to 320x240
   VERA.display.vscale = 64;         // Reset scale to 320x240
-  
 
   // Reset layer 0 to default text mode configuration
   VERA.layer1.hscroll = 0;
