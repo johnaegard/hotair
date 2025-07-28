@@ -83,6 +83,11 @@
 #define FLAK_BURST_FRAMES_PER_FRAME 4
 #define FLAK_BURST_FRAMES 7
 
+#define NUM_CODE_BANKS 1
+#define BANK_NUM (*(unsigned char *)0x00)
+
+extern void _BANKRAM01_SIZE__[];
+
 unsigned int tilemap_x_offset_px = MAP_WIDTH_TILES * TILE_SIZE_PX / 2;
 unsigned int tilemap_y_offset_px = MAP_HEIGHT_TILES * TILE_SIZE_PX / 2;
 //
@@ -262,6 +267,7 @@ unsigned long runtime_seconds;
 
 unsigned char areg;
 
+#pragma code-name (push, "BANKRAM01")
 void setup_random(void) {
   // call entropy_get to seed the random number generator
   asm("jsr $FECF");
@@ -406,6 +412,17 @@ void sprite72_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame
   }
 
 }
+void* get_free_object_from_pool(void** pool, unsigned char pool_size, unsigned char free_field_offset) {
+  char i;
+  for (i = 0; i < pool_size; i++) {
+    bool* free_field = (bool*)((char*)pool[i] + free_field_offset);
+    if (*free_field == true) {
+      return pool[i];
+    }
+  }
+  return NULL;  // No free object found
+}
+
 void update_ship_position(void) {
   //
   // THRUST
@@ -586,9 +603,6 @@ void update_sprites(void) {
 
 }
 
-//
-// FLAK
-//
 void setup_flak_guns(void) {
   
   flak_guns[0]->x_px = (ship_x_fpx >> 16) - 48;
@@ -625,16 +639,6 @@ void setup_flak_shells(void) {
     flak_shell_pool[i]->free = true;
     flak_shell_pool[i]->index = i;
   }
-}
-void* get_free_object_from_pool(void** pool, unsigned char pool_size, unsigned char free_field_offset) {
-  char i;
-  for (i = 0; i < pool_size; i++) {
-    bool* free_field = (bool*)((char*)pool[i] + free_field_offset);
-    if (*free_field == true) {
-      return pool[i];
-    }
-  }
-  return NULL;  // No free object found
 }
 void fire_flak_guns(void) {
  char gun;
@@ -772,6 +776,30 @@ void update_flak_burst_sprites(void) {
     VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
   }
 }
+#pragma code-name (pop)
+
+void load_code_banks(void) {
+  int i;
+  unsigned char fileName[32];
+  unsigned char previousBank = BANK_NUM;
+  printf("\n");
+
+  for (i = 1; i <= NUM_CODE_BANKS; i++) {
+    sprintf(fileName, "hotair.prg.0%x", i);
+    printf("loading %s.....", fileName);
+
+    // Set the Bank we are loading into
+    BANK_NUM = i;
+
+    // Load the file into Banked RAM
+    cbm_k_setnam(fileName);
+    cbm_k_setlfs(0, 8, 0); // Skip the first 2 bytes of the file. They just hold the size in bytes.
+    cbm_k_load(0, (unsigned int *) BANK_RAM);
+    printf("loaded\n");
+  }
+
+  BANK_NUM = previousBank;
+}
 
 void fire(unsigned char col, unsigned char row, unsigned char size) {
   char r,c;
@@ -789,10 +817,37 @@ void fire(unsigned char col, unsigned char row, unsigned char size) {
   }
 }
 
+void outro(void) {
+  unsigned long fps = 0;
+
+  end_time = clock();
+  runtime_seconds = (end_time - start_time) / CLOCKS_PER_SEC;
+  fps = game_frame / runtime_seconds;
+
+  // Reset VERA to text mode
+  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
+  VERA.display.hscale = 64;         // Reset scale to 320x240
+  VERA.display.vscale = 64;         // Reset scale to 320x240
+
+  // Reset layer 0 to default text mode configuration
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+  VERA.layer1.config = 0b01100000;  // 128x64
+  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
+
+  printf("\n\nend of game");
+
+  printf("\n\n_bankram01_size__ %u", _BANKRAM01_SIZE__);
+  printf("\n\nframes: %lu", game_frame);
+  printf("\nruntime: %lu seconds", runtime_seconds);
+  printf("\nfps: %lu\n\n", fps);
+}
+
 void main(void) {
 
   bool run = true;
-  unsigned long fps = 0;
+
+  BANK_NUM = 1;
 
   start_time = clock();
 
@@ -801,6 +856,7 @@ void main(void) {
   ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
   ship_y_fpx = ship_y_fpx << 16;
 
+  load_code_banks();
   setup_random();
   vera_setup();
   joy_install(cx16_std_joy);
@@ -826,6 +882,7 @@ void main(void) {
     update_ship_bearing();
     update_ship_position();
     update_scroll();
+
     pivot_flak_guns();
     update_flak_shells();
     update_flak_bursts();
@@ -844,24 +901,6 @@ void main(void) {
     wait();
   }
 
-  end_time = clock();
-  runtime_seconds = (end_time - start_time) / CLOCKS_PER_SEC;
-  fps = game_frame / runtime_seconds;
+  outro();
 
-  // Reset VERA to text mode
-  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
-  VERA.display.hscale = 64;         // Reset scale to 320x240
-  VERA.display.vscale = 64;         // Reset scale to 320x240
-
-  // Reset layer 0 to default text mode configuration
-  VERA.layer1.hscroll = 0;
-  VERA.layer1.vscroll = 0;
-  VERA.layer1.config = 0b01100000;  // 128x64
-  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
-
-  // Print goodbye message with runtime
-  printf("\n\nend of game");
-  printf("\n\nframes: %lu", game_frame);
-  printf("\nruntime: %lu seconds", runtime_seconds);
-  printf("\nfps: %lu\n\n", fps);
 }
