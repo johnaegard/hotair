@@ -260,6 +260,17 @@ clock_t start_time;
 clock_t end_time;
 unsigned long runtime_seconds;
 
+unsigned char areg;
+
+void setup_random(void) {
+  // call entropy_get to seed the random number generator
+  unsigned int seed;
+
+  asm("jsr $FECF");
+  asm("STA %v", areg);
+  srand(areg);
+}
+
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
   unsigned char m = 2;
@@ -776,7 +787,7 @@ void main(void) {
   ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
   ship_y_fpx = ship_y_fpx << 16;
 
-  srand(time(NULL));
+  setup_random();
   vera_setup();
   joy_install(cx16_std_joy);
   do_mallocs();
