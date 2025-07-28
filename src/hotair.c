@@ -812,15 +812,16 @@ void fire(unsigned char col, unsigned char row, unsigned char size) {
 
   for (r = 0; r < size; r++) {
     for (c = 0; c < size; c++) {
-      addr = 1+ MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
-      VERA.address = addr;
-      VERA.address_hi = addr >> 16;
-      VERA.address_hi |= VERA_INC_2;
-      // VERA.data0 = 0x40 + (rand() % 0x40);
-      color = fire_bgcolors[rand() % FIRE_NUM_BG_COLORS];
-      color <<= 4;
-      color |= fire_fgcolors[rand() % FIRE_NUM_FG_COLORS];
-      VERA.data0 = color ;
+      if (rand() < 4000) {
+        addr = 1+ MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
+        VERA.address = addr;
+        VERA.address_hi = addr >> 16;
+        VERA.address_hi |= VERA_INC_2;
+        color = fire_bgcolors[rand() % FIRE_NUM_BG_COLORS];
+        color <<= 4;
+        color |= fire_fgcolors[rand() % FIRE_NUM_FG_COLORS];
+        VERA.data0 = color ;
+      }
     }
   }
 }
@@ -903,9 +904,8 @@ void main(void) {
     update_flak_shell_sprites();
     update_flak_burst_sprites();
 
-    if (game_frame % 7 == 0) {
-      fire(63,147,3);
-    }
+
+    fire(62,146,5);
 
     game_frame++;
     wait();
