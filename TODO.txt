@@ -31,7 +31,6 @@
 * loot!
   * various pieces of retro kit
   
-
 VERA MEMORY SAVINGS
   * remove overlay.
   * make overlay a map of 16-pixel tiles -- map shrinks to 25% of its size (tho requires a new 16-pixel tileset)

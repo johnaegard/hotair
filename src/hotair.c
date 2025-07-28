@@ -267,6 +267,29 @@ unsigned long runtime_seconds;
 
 unsigned char areg;
 
+void load_code_banks(void) {
+  int i;
+  unsigned char fileName[32];
+  unsigned char previousBank = BANK_NUM;
+  printf("\n");
+
+  for (i = 1; i <= NUM_CODE_BANKS; i++) {
+    sprintf(fileName, "hotair.prg.0%x", i);
+    printf("loading %s.....", fileName);
+
+    // Set the Bank we are loading into
+    BANK_NUM = i;
+
+    // Load the file into Banked RAM
+    cbm_k_setnam(fileName);
+    cbm_k_setlfs(0, 8, 0); // Skip the first 2 bytes of the file. They just hold the size in bytes.
+    cbm_k_load(0, (unsigned int *) BANK_RAM);
+    printf("loaded\n");
+  }
+
+  BANK_NUM = previousBank;
+}
+
 #pragma code-name (push, "BANKRAM01")
 void setup_random(void) {
   // call entropy_get to seed the random number generator
@@ -776,43 +799,28 @@ void update_flak_burst_sprites(void) {
     VERA.data0 = SPRITE_BYTE7_HEIGHT_32 | SPRITE_BYTE7_WIDTH_32;
   }
 }
-#pragma code-name (pop)
 
-void load_code_banks(void) {
-  int i;
-  unsigned char fileName[32];
-  unsigned char previousBank = BANK_NUM;
-  printf("\n");
+#define FIRE_NUM_FG_COLORS 4
+#define FIRE_NUM_BG_COLORS 2
 
-  for (i = 1; i <= NUM_CODE_BANKS; i++) {
-    sprintf(fileName, "hotair.prg.0%x", i);
-    printf("loading %s.....", fileName);
-
-    // Set the Bank we are loading into
-    BANK_NUM = i;
-
-    // Load the file into Banked RAM
-    cbm_k_setnam(fileName);
-    cbm_k_setlfs(0, 8, 0); // Skip the first 2 bytes of the file. They just hold the size in bytes.
-    cbm_k_load(0, (unsigned int *) BANK_RAM);
-    printf("loaded\n");
-  }
-
-  BANK_NUM = previousBank;
-}
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x0, 0x1, 0x07, 0x0A};
+unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x2, 0x8};
 
 void fire(unsigned char col, unsigned char row, unsigned char size) {
-  char r,c;
+  unsigned char r,c,color;
   unsigned long addr;
 
   for (r = 0; r < size; r++) {
     for (c = 0; c < size; c++) {
-      addr = MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
+      addr = 1+ MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
       VERA.address = addr;
       VERA.address_hi = addr >> 16;
-      VERA.address_hi |= VERA_INC_1;
-      VERA.data0 = 0x40 + (rand() % 0x40);
-      VERA.data0 = rand() % 255;
+      VERA.address_hi |= VERA_INC_2;
+      // VERA.data0 = 0x40 + (rand() % 0x40);
+      color = fire_bgcolors[rand() % FIRE_NUM_BG_COLORS];
+      color <<= 4;
+      color |= fire_fgcolors[rand() % FIRE_NUM_FG_COLORS];
+      VERA.data0 = color ;
     }
   }
 }
@@ -842,6 +850,8 @@ void outro(void) {
   printf("\nruntime: %lu seconds", runtime_seconds);
   printf("\nfps: %lu\n\n", fps);
 }
+
+#pragma code-name (pop)
 
 void main(void) {
 
@@ -893,9 +903,9 @@ void main(void) {
     update_flak_shell_sprites();
     update_flak_burst_sprites();
 
-    // if (game_frame % 30 == 0) {
-    //   fire(64,148,4);
-    // }
+    if (game_frame % 7 == 0) {
+      fire(63,147,3);
+    }
 
     game_frame++;
     wait();
@@ -904,3 +914,4 @@ void main(void) {
   outro();
 
 }
+
