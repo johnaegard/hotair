@@ -353,9 +353,6 @@ void do_mallocs(void) {
   sprite_frame = malloc(sizeof(SpriteFrame));
 }
 void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
-
-  // TODO: Change this to use a lookup table for better performance
-
   if (frame >= 19) {
     sf->flips = 0b01;
     sf->frame_addr = base_addr + (frame_size_bytes * (24 - frame));
@@ -690,10 +687,10 @@ void update_flak_shells(void) {
 }
 void update_flak_shell_sprites(void){
   char shell;
-  int flak_shell_xoff_px = hscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
-  int flak_shell_yoff_px = vscroll - (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
+  int flak_shell_xoff_px = hscroll + (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
+  int flak_shell_yoff_px = vscroll + (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
 
-#ifdef DEBUG_CONSOLE
+  #ifdef DEBUG_CONSOLE
   return;
 #endif
 
