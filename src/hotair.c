@@ -264,8 +264,6 @@ unsigned char areg;
 
 void setup_random(void) {
   // call entropy_get to seed the random number generator
-  unsigned int seed;
-
   asm("jsr $FECF");
   asm("STA %v", areg);
   srand(areg);
