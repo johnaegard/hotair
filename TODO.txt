@@ -6,7 +6,7 @@
   * petscii explosion
 
 * better randomization (wind)
-* mouse target
+* mouse target for defensive fire
 * throttle
 * rescue / loot something
 * hold steady against wind while rescuring things

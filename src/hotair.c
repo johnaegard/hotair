@@ -76,8 +76,8 @@
 #define PREDICTOR_LOOKAHEAD_FRAMES 180
 #define SHOW_PREDICTOR true
 
-#define NUM_FLAK_SHELLS 10
-#define FLAK_FIRE_CHANCE 800 // of 32767
+#define NUM_FLAK_SHELLS 20
+#define FLAK_FIRE_CHANCE 400 // of 32767
 #define FLAK_SHELL_FUSE_FRAMES 65
 
 #define FLAK_BURST_FRAMES_PER_FRAME 4
@@ -224,12 +224,13 @@ unsigned long flak_burst_frame_addr;
 typedef struct {
   unsigned int x_12_4_fpx;
   unsigned int y_12_4_fpx;
-  unsigned char bearing;
   signed int vx_12_4_fpx;
   signed int vy_12_4_fpx;
   bool free;
   unsigned char fuse;
   unsigned char index;
+  unsigned long bearing_frame_addr;
+  unsigned char flips;
 } FlakShell;
 FlakShell* flak_shell_pool[NUM_FLAK_SHELLS];
 FlakShell* flak_shell;
@@ -255,6 +256,9 @@ unsigned int flak_burst_screen_x_px;
 unsigned int flak_burst_screen_y_px;
 
 unsigned int roll;
+clock_t start_time;
+clock_t end_time;
+unsigned long runtime_seconds;
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
@@ -573,6 +577,9 @@ void update_sprites(void) {
 
 }
 
+//
+// FLAK
+//
 void setup_flak_guns(void) {
   
   flak_guns[0]->x_px = (ship_x_fpx >> 16) - 48;
@@ -632,11 +639,13 @@ void fire_flak_guns(void) {
         flak_shell->x_12_4_fpx <<= 4;
         flak_shell->y_12_4_fpx = flak_guns[gun]->y_px;
         flak_shell->y_12_4_fpx <<= 4;
-        flak_shell->bearing = flak_guns[gun]->bearing;
 
-        flak_shell->vx_12_4_fpx = (x_comp_for_bearing[flak_shell->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
-        flak_shell->vy_12_4_fpx = (y_comp_for_bearing[flak_shell->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
+        flak_shell->vx_12_4_fpx = (x_comp_for_bearing[flak_guns[gun]->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
+        flak_shell->vy_12_4_fpx = (y_comp_for_bearing[flak_guns[gun]->bearing*3] >> 11) * FLAK_SHELL_VELOCITY_MULTIPLIER;
 
+        sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_guns[gun]->bearing);
+        flak_shell->bearing_frame_addr = sprite_frame->frame_addr;
+        flak_shell->flips = sprite_frame->flips;
         flak_shell->fuse = FLAK_SHELL_FUSE_FRAMES;
 #ifdef DEBUG_CONSOLE
         printf("flak gun %d fired flak shell %d\n", gun, flak_shell->index);
@@ -690,7 +699,7 @@ void update_flak_shell_sprites(void){
   int flak_shell_xoff_px = hscroll + (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
   int flak_shell_yoff_px = vscroll + (FLAK_SHELL_SPRITE_SIZE_PIXELS / 2);
 
-  #ifdef DEBUG_CONSOLE
+#ifdef DEBUG_CONSOLE
   return;
 #endif
 
@@ -700,14 +709,13 @@ void update_flak_shell_sprites(void){
     flak_shell_screen_x_px = flak_shell_x_px - flak_shell_xoff_px;
     flak_shell_screen_y_px = flak_shell_y_px - flak_shell_yoff_px;
 
-    sprite24_frame(sprite_frame, FLAK_SHELL_SPRITE_BASE_ADDR, FLAK_SHELL_SPRITE_FRAME_BYTES, flak_shell_pool[shell]->bearing);
-    VERA.data0 = sprite_frame->frame_addr >> 5;
-    VERA.data0 = SPRITE_BYTE1_16BPP | (sprite_frame->frame_addr >> 13);
+    VERA.data0 = flak_shell_pool[shell]->bearing_frame_addr >> 5;
+    VERA.data0 = SPRITE_BYTE1_16BPP | (flak_shell_pool[shell]->bearing_frame_addr >> 13);
     VERA.data0 = flak_shell_screen_x_px;
     VERA.data0 = flak_shell_screen_x_px >> 8;
     VERA.data0 = flak_shell_screen_y_px;
     VERA.data0 = flak_shell_screen_y_px >> 8;
-    VERA.data0 = sprite_frame->flips | (flak_shell_pool[shell]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L1);
+    VERA.data0 = flak_shell_pool[shell]->flips | (flak_shell_pool[shell]->free ? SPRITE_BYTE6_Z_DISABLED : SPRITE_BYTE6_Z_ABOVE_L1);
     VERA.data0 = SPRITE_BYTE7_HEIGHT_16 | SPRITE_BYTE7_WIDTH_16;
   }
 }
@@ -757,6 +765,12 @@ void update_flak_burst_sprites(void) {
 }
 
 void main(void) {
+
+  bool run = true;
+  unsigned long fps = 0;
+
+  start_time = clock();
+
   ship_x_fpx = (MAP_WIDTH_TILES * TILE_SIZE_PX / 2);
   ship_x_fpx = ship_x_fpx << 16;
   ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
@@ -776,8 +790,12 @@ void main(void) {
   ship_screen_x_px = screen_center_x_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
   ship_screen_y_px = screen_center_y_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
 
-  while (true) {
+  while (run) {
     joy = joy_read(0);
+
+    if (JOY_DOWN(joy)) {
+      run = false;
+    }
 
     update_wind();
     update_ship_bearing();
@@ -797,4 +815,25 @@ void main(void) {
     wait();
   }
 
+  end_time = clock();
+  runtime_seconds = (end_time - start_time) / CLOCKS_PER_SEC;
+  fps = game_frame / runtime_seconds;
+
+  // Reset VERA to text mode
+  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
+  VERA.display.hscale = 64;         // Reset scale to 320x240
+  VERA.display.vscale = 64;         // Reset scale to 320x240
+  
+
+  // Reset layer 0 to default text mode configuration
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+  VERA.layer1.config = 0b01100000;  // 128x64
+  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
+
+  // Print goodbye message with runtime
+  printf("\n\nend of game");
+  printf("\n\nframes: %lu", game_frame);
+  printf("\nruntime: %lu seconds", runtime_seconds);
+  printf("\nfps: %lu\n\n", fps);
 }
