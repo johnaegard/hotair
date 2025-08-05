@@ -1,0 +1,260 @@
+GIMP Palette
+Name: CX16
+Columns: 16
+# COMMANDER X16
+  0   0   0 Index 0, VeraPalOffset 0
+240 240 240 Index 1, VeraPalOffset 0
+  0   0 128 Index 2, VeraPalOffset 0
+224 240 160 Index 3, VeraPalOffset 0
+192  64 192 Index 4, VeraPalOffset 0
+ 80 192   0 Index 5, VeraPalOffset 0
+160   0   0 Index 6, VeraPalOffset 0
+112 224 224 Index 7, VeraPalOffset 0
+ 80 128 208 Index 8, VeraPalOffset 0
+  0  64  96 Index 9, VeraPalOffset 0
+112 112 240 Index 10, VeraPalOffset 0
+ 48  48  48 Index 11, VeraPalOffset 0
+112 112 112 Index 12, VeraPalOffset 0
+ 96 240 160 Index 13, VeraPalOffset 0
+240 128   0 Index 14, VeraPalOffset 0
+176 176 176 Index 15, VeraPalOffset 0
+  0   0   0 Index 16, VeraPalOffset 1
+ 16  16  16 Index 17, VeraPalOffset 1
+ 32  32  32 Index 18, VeraPalOffset 1
+ 48  48  48 Index 19, VeraPalOffset 1
+ 64  64  64 Index 20, VeraPalOffset 1
+ 80  80  80 Index 21, VeraPalOffset 1
+ 96  96  96 Index 22, VeraPalOffset 1
+112 112 112 Index 23, VeraPalOffset 1
+128 128 128 Index 24, VeraPalOffset 1
+144 144 144 Index 25, VeraPalOffset 1
+160 160 160 Index 26, VeraPalOffset 1
+176 176 176 Index 27, VeraPalOffset 1
+192 192 192 Index 28, VeraPalOffset 1
+208 208 208 Index 29, VeraPalOffset 1
+224 224 224 Index 30, VeraPalOffset 1
+240 240 240 Index 31, VeraPalOffset 1
+ 16  16  32 Index 32, VeraPalOffset 2
+ 48  48  64 Index 33, VeraPalOffset 2
+ 64  64  96 Index 34, VeraPalOffset 2
+ 96  96 128 Index 35, VeraPalOffset 2
+128 128 160 Index 36, VeraPalOffset 2
+144 144 192 Index 37, VeraPalOffset 2
+176 176 240 Index 38, VeraPalOffset 2
+ 16  16  32 Index 39, VeraPalOffset 2
+ 32  32  64 Index 40, VeraPalOffset 2
+ 48  48  96 Index 41, VeraPalOffset 2
+ 64  64 128 Index 42, VeraPalOffset 2
+ 80  80 160 Index 43, VeraPalOffset 2
+ 96  96 192 Index 44, VeraPalOffset 2
+112 112 240 Index 45, VeraPalOffset 2
+  0   0  32 Index 46, VeraPalOffset 2
+ 16  16  64 Index 47, VeraPalOffset 2
+ 16  16  96 Index 48, VeraPalOffset 3
+ 32  32 128 Index 49, VeraPalOffset 3
+ 32  32 160 Index 50, VeraPalOffset 3
+ 48  48 192 Index 51, VeraPalOffset 3
+ 48  48 240 Index 52, VeraPalOffset 3
+  0   0  32 Index 53, VeraPalOffset 3
+  0   0  64 Index 54, VeraPalOffset 3
+  0   0  96 Index 55, VeraPalOffset 3
+  0   0 128 Index 56, VeraPalOffset 3
+  0   0 160 Index 57, VeraPalOffset 3
+  0   0 192 Index 58, VeraPalOffset 3
+  0   0 240 Index 59, VeraPalOffset 3
+ 16  32  32 Index 60, VeraPalOffset 3
+ 48  64  64 Index 61, VeraPalOffset 3
+ 64  96  96 Index 62, VeraPalOffset 3
+ 96 128 128 Index 63, VeraPalOffset 3
+128 160 160 Index 64, VeraPalOffset 4
+144 192 192 Index 65, VeraPalOffset 4
+176 224 240 Index 66, VeraPalOffset 4
+ 16  16  32 Index 67, VeraPalOffset 4
+ 32  48  64 Index 68, VeraPalOffset 4
+ 48  80  96 Index 69, VeraPalOffset 4
+ 64 112 128 Index 70, VeraPalOffset 4
+ 80 144 160 Index 71, VeraPalOffset 4
+ 96 176 192 Index 72, VeraPalOffset 4
+112 208 240 Index 73, VeraPalOffset 4
+  0  16  32 Index 74, VeraPalOffset 4
+ 16  48  64 Index 75, VeraPalOffset 4
+ 16  80  96 Index 76, VeraPalOffset 4
+ 32  96 128 Index 77, VeraPalOffset 4
+ 32 128 160 Index 78, VeraPalOffset 4
+ 48 160 192 Index 79, VeraPalOffset 4
+ 48 192 240 Index 80, VeraPalOffset 5
+  0  16  32 Index 81, VeraPalOffset 5
+  0  48  64 Index 82, VeraPalOffset 5
+  0  64  96 Index 83, VeraPalOffset 5
+  0  96 128 Index 84, VeraPalOffset 5
+  0 128 160 Index 85, VeraPalOffset 5
+  0 144 192 Index 86, VeraPalOffset 5
+  0 176 240 Index 87, VeraPalOffset 5
+ 16  32  16 Index 88, VeraPalOffset 5
+ 48  64  48 Index 89, VeraPalOffset 5
+ 64  96  80 Index 90, VeraPalOffset 5
+ 96 128 112 Index 91, VeraPalOffset 5
+128 160 144 Index 92, VeraPalOffset 5
+144 192 176 Index 93, VeraPalOffset 5
+176 240 208 Index 94, VeraPalOffset 5
+ 16  32  16 Index 95, VeraPalOffset 5
+ 32  64  48 Index 96, VeraPalOffset 6
+ 48  96  64 Index 97, VeraPalOffset 6
+ 64 128  96 Index 98, VeraPalOffset 6
+ 80 160 128 Index 99, VeraPalOffset 6
+ 96 192 144 Index 100, VeraPalOffset 6
+112 240 176 Index 101, VeraPalOffset 6
+  0  32  16 Index 102, VeraPalOffset 6
+ 16  64  32 Index 103, VeraPalOffset 6
+ 16  96  64 Index 104, VeraPalOffset 6
+ 32 128  80 Index 105, VeraPalOffset 6
+ 32 160  96 Index 106, VeraPalOffset 6
+ 48 192 128 Index 107, VeraPalOffset 6
+ 48 240 144 Index 108, VeraPalOffset 6
+  0  32  16 Index 109, VeraPalOffset 6
+  0  64  32 Index 110, VeraPalOffset 6
+  0  96  48 Index 111, VeraPalOffset 6
+  0 128  64 Index 112, VeraPalOffset 7
+  0 160  80 Index 113, VeraPalOffset 7
+  0 192  96 Index 114, VeraPalOffset 7
+  0 240 112 Index 115, VeraPalOffset 7
+ 16  32  16 Index 116, VeraPalOffset 7
+ 48  64  48 Index 117, VeraPalOffset 7
+ 80  96  64 Index 118, VeraPalOffset 7
+ 96 128  96 Index 119, VeraPalOffset 7
+128 160 128 Index 120, VeraPalOffset 7
+160 192 144 Index 121, VeraPalOffset 7
+192 240 176 Index 122, VeraPalOffset 7
+ 16  32  16 Index 123, VeraPalOffset 7
+ 32  64  32 Index 124, VeraPalOffset 7
+ 64  96  48 Index 125, VeraPalOffset 7
+ 80 128  64 Index 126, VeraPalOffset 7
+ 96 160  80 Index 127, VeraPalOffset 7
+128 192  96 Index 128, VeraPalOffset 8
+144 240 112 Index 129, VeraPalOffset 8
+  0  32   0 Index 130, VeraPalOffset 8
+ 16  64  16 Index 131, VeraPalOffset 8
+ 32  96  16 Index 132, VeraPalOffset 8
+ 48 128  32 Index 133, VeraPalOffset 8
+ 64 160  32 Index 134, VeraPalOffset 8
+ 80 192  48 Index 135, VeraPalOffset 8
+ 96 240  48 Index 136, VeraPalOffset 8
+  0  32   0 Index 137, VeraPalOffset 8
+ 16  64   0 Index 138, VeraPalOffset 8
+ 16  96   0 Index 139, VeraPalOffset 8
+ 32 128   0 Index 140, VeraPalOffset 8
+ 32 160   0 Index 141, VeraPalOffset 8
+ 48 192   0 Index 142, VeraPalOffset 8
+ 48 240   0 Index 143, VeraPalOffset 8
+ 32  32  16 Index 144, VeraPalOffset 9
+ 64  64  48 Index 145, VeraPalOffset 9
+ 96  96  64 Index 146, VeraPalOffset 9
+128 128  96 Index 147, VeraPalOffset 9
+160 160 128 Index 148, VeraPalOffset 9
+192 192 144 Index 149, VeraPalOffset 9
+240 240 176 Index 150, VeraPalOffset 9
+ 32  32  16 Index 151, VeraPalOffset 9
+ 64  64  32 Index 152, VeraPalOffset 9
+ 96  96  48 Index 153, VeraPalOffset 9
+128 128  64 Index 154, VeraPalOffset 9
+160 160  80 Index 155, VeraPalOffset 9
+192 192  96 Index 156, VeraPalOffset 9
+240 240 112 Index 157, VeraPalOffset 9
+ 32  32   0 Index 158, VeraPalOffset 9
+ 64  64  16 Index 159, VeraPalOffset 9
+ 96  96  16 Index 160, VeraPalOffset 10
+128 128  32 Index 161, VeraPalOffset 10
+160 160  32 Index 162, VeraPalOffset 10
+192 192  48 Index 163, VeraPalOffset 10
+240 240  48 Index 164, VeraPalOffset 10
+ 32  32   0 Index 165, VeraPalOffset 10
+ 64  64   0 Index 166, VeraPalOffset 10
+ 96  96   0 Index 167, VeraPalOffset 10
+128 128   0 Index 168, VeraPalOffset 10
+160 160   0 Index 169, VeraPalOffset 10
+192 192   0 Index 170, VeraPalOffset 10
+240 240   0 Index 171, VeraPalOffset 10
+ 32  16  16 Index 172, VeraPalOffset 10
+ 64  48  48 Index 173, VeraPalOffset 10
+ 96  80  64 Index 174, VeraPalOffset 10
+128  96  96 Index 175, VeraPalOffset 10
+160 128 128 Index 176, VeraPalOffset 11
+192 160 144 Index 177, VeraPalOffset 11
+240 192 176 Index 178, VeraPalOffset 11
+ 32  16  16 Index 179, VeraPalOffset 11
+ 64  32  32 Index 180, VeraPalOffset 11
+ 96  64  48 Index 181, VeraPalOffset 11
+128  80  64 Index 182, VeraPalOffset 11
+160  96  80 Index 183, VeraPalOffset 11
+192 128  96 Index 184, VeraPalOffset 11
+240 144 112 Index 185, VeraPalOffset 11
+ 32   0   0 Index 186, VeraPalOffset 11
+ 64  16  16 Index 187, VeraPalOffset 11
+ 96  32  16 Index 188, VeraPalOffset 11
+128  48  32 Index 189, VeraPalOffset 11
+160  64  32 Index 190, VeraPalOffset 11
+192  80  48 Index 191, VeraPalOffset 11
+240  96  48 Index 192, VeraPalOffset 12
+ 32   0   0 Index 193, VeraPalOffset 12
+ 64  16   0 Index 194, VeraPalOffset 12
+ 96  16   0 Index 195, VeraPalOffset 12
+128  32   0 Index 196, VeraPalOffset 12
+160  32   0 Index 197, VeraPalOffset 12
+192  48   0 Index 198, VeraPalOffset 12
+240  48   0 Index 199, VeraPalOffset 12
+ 32  16  16 Index 200, VeraPalOffset 12
+ 64  48  48 Index 201, VeraPalOffset 12
+ 96  64  80 Index 202, VeraPalOffset 12
+128  96 112 Index 203, VeraPalOffset 12
+160 128 144 Index 204, VeraPalOffset 12
+192 144 176 Index 205, VeraPalOffset 12
+240 176 208 Index 206, VeraPalOffset 12
+ 32  16  16 Index 207, VeraPalOffset 12
+ 64  32  48 Index 208, VeraPalOffset 13
+ 96  48  64 Index 209, VeraPalOffset 13
+128  64  96 Index 210, VeraPalOffset 13
+160  80 128 Index 211, VeraPalOffset 13
+192  96 144 Index 212, VeraPalOffset 13
+240 112 176 Index 213, VeraPalOffset 13
+ 32   0  16 Index 214, VeraPalOffset 13
+ 64  16  32 Index 215, VeraPalOffset 13
+ 96  16  64 Index 216, VeraPalOffset 13
+128  32  80 Index 217, VeraPalOffset 13
+160  32  96 Index 218, VeraPalOffset 13
+192  48 128 Index 219, VeraPalOffset 13
+240  48 144 Index 220, VeraPalOffset 13
+ 32   0  16 Index 221, VeraPalOffset 13
+ 64   0  32 Index 222, VeraPalOffset 13
+ 96   0  48 Index 223, VeraPalOffset 13
+128   0  64 Index 224, VeraPalOffset 14
+160   0  80 Index 225, VeraPalOffset 14
+192   0  96 Index 226, VeraPalOffset 14
+240   0 112 Index 227, VeraPalOffset 14
+ 32  16  32 Index 228, VeraPalOffset 14
+ 64  48  64 Index 229, VeraPalOffset 14
+ 96  64  96 Index 230, VeraPalOffset 14
+128  96 128 Index 231, VeraPalOffset 14
+160 128 160 Index 232, VeraPalOffset 14
+192 144 192 Index 233, VeraPalOffset 14
+224 176 240 Index 234, VeraPalOffset 14
+ 16  16  32 Index 235, VeraPalOffset 14
+ 48  32  64 Index 236, VeraPalOffset 14
+ 80  48  96 Index 237, VeraPalOffset 14
+112  64 128 Index 238, VeraPalOffset 14
+144  80 160 Index 239, VeraPalOffset 14
+176  96 192 Index 240, VeraPalOffset 15
+208 112 240 Index 241, VeraPalOffset 15
+ 16   0  32 Index 242, VeraPalOffset 15
+ 48  16  64 Index 243, VeraPalOffset 15
+ 80  16  96 Index 244, VeraPalOffset 15
+ 96  32 128 Index 245, VeraPalOffset 15
+128  32 160 Index 246, VeraPalOffset 15
+160  48 192 Index 247, VeraPalOffset 15
+192  48 240 Index 248, VeraPalOffset 15
+ 16   0  32 Index 249, VeraPalOffset 15
+ 48   0  64 Index 250, VeraPalOffset 15
+ 64   0  96 Index 251, VeraPalOffset 15
+ 96   0 128 Index 252, VeraPalOffset 15
+128   0 160 Index 253, VeraPalOffset 15
+144   0 192 Index 254, VeraPalOffset 15
+176   0 240 Index 255, VeraPalOffset 15
