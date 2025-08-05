@@ -291,6 +291,7 @@ void load_code_banks(void) {
 }
 
 #pragma code-name (push, "BANKRAM01")
+
 void setup_random(void) {
   // call entropy_get to seed the random number generator
   asm("jsr $FECF");
@@ -596,7 +597,6 @@ void update_sprites(void) {
 
 }
 
-
 #define FIRE_NUM_FG_COLORS 4
 #define FIRE_NUM_BG_COLORS 8
 
@@ -622,7 +622,6 @@ void fire(unsigned char col, unsigned char row, unsigned char size) {
     }
   }
 }
-
 void outro(void) {
   unsigned long fps = 0;
 
@@ -687,7 +686,6 @@ void main(void) {
     update_ship_bearing();
     update_ship_position();
     update_scroll();
-
     vera_scroll();
     update_sprites();
 
@@ -700,4 +698,3 @@ void main(void) {
   outro();
 
 }
-
