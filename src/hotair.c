@@ -53,7 +53,7 @@
 #define FLAK_SHELL_SPRITE_SIZE_PIXELS 16
 #define FLAK_BURST_SPRITE_SIZE_PIXELS 32
 
-#define WIND_ON false 
+#undef WIND_ON 
 
 #define WIND_CHANGE_CHANCE 300 // of 32767
 #define WIND_DIRECTIONS 24
@@ -465,10 +465,10 @@ void update_ship_position(void) {
   //
   // WIND
   //
-  if (WIND_ON) {
+  #ifdef WIND_ON
     ship_vx_fpx += x_comp_for_bearing[wind_direction * 3] / WIND_DIVISOR;
     ship_vy_fpx += y_comp_for_bearing[wind_direction * 3] / WIND_DIVISOR;
-  }
+  #endif
 
   // 
   // UPDATE VELOCITY
@@ -599,29 +599,65 @@ void update_sprites(void) {
 
 #define FIRE_NUM_FG_COLORS 4
 #define FIRE_NUM_BG_COLORS 8
+#define FIRE_MAX_SIZE 50
+#define FIRE_CACHE_SIZE (FIRE_MAX_SIZE * FIRE_MAX_SIZE)
 
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x1, 0x07, 0xA};
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x1, 0x07, 0xA, 0xD};
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x0, 0x2, 0x2, 0x07, 0x8, 0x8, 0x8, 0x8};
 
-void fire(unsigned char col, unsigned char row, unsigned char size) {
-  unsigned char r,c,color;
-  unsigned long addr;
+// Cache for fire tile address offsets
+unsigned long fire_addr_cache[FIRE_CACHE_SIZE];
+bool fire_cache_initialized = false;
+unsigned char fire_cache_col = 0xFF;  // Invalid initial value
+unsigned char fire_cache_row = 0xFF;  // Invalid initial value
+unsigned char fire_cache_size = 0;
 
-  for (r = 0; r < size; r++) {
-    for (c = 0; c < size; c++) {
-      if (rand() < 4000) {
-        addr = 1+ MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
-        VERA.address = addr;
-        VERA.address_hi = addr >> 16;
-        VERA.address_hi |= VERA_INC_2;
-        color = fire_bgcolors[rand() % FIRE_NUM_BG_COLORS];
-        color <<= 4;
-        color |= fire_fgcolors[rand() % FIRE_NUM_FG_COLORS];
-        VERA.data0 = color ;
-      }
+#define FRAMES_PER_FIRE_CYCLE 9
+
+void init_fire_cache(unsigned char col, unsigned char row, unsigned char size) {
+  unsigned char r, c;
+  unsigned int i;
+  unsigned long num_tiles = size * size;
+  
+  for(i = 0; i < num_tiles; i++) {
+    r = i / size;
+    c = i % size;
+    fire_addr_cache[i] = 1 + MAP0_BASE_ADDR + (2 * ((row + r) * MAP_WIDTH_TILES + col + c));
+  }
+  fire_cache_col = col;
+  fire_cache_row = row;
+  fire_cache_size = size;
+  fire_cache_initialized = true;
+}
+
+static unsigned int fire_rng_state = 1;
+
+unsigned int fire_rand(void) {
+  fire_rng_state = (fire_rng_state * 1103515245U + 12345U) & 0x7FFFFFFF;
+  return fire_rng_state;
+}
+
+void fire(unsigned char size) {
+  unsigned char color, frame_offset;
+  unsigned int i;
+  unsigned long addr;
+  unsigned long num_tiles = size * size;
+  unsigned int rand_value; 
+
+  frame_offset = game_frame % FRAMES_PER_FIRE_CYCLE;
+
+  for(i = frame_offset; i < num_tiles; i += FRAMES_PER_FIRE_CYCLE) {
+    rand_value = rand();  // Much faster than system rand()
+    if ((rand_value >> 14) == 0) {  // ~3% chance
+      addr = fire_addr_cache[i];
+      VERA.address = addr;
+      VERA.address_hi = (addr >> 16) | VERA_INC_2;
+      color = (fire_bgcolors[rand_value & 0x07] << 4) | fire_fgcolors[(rand_value >> 10) & 0x03];
+      VERA.data0 = color;
     }
   }
 }
+
 void outro(void) {
   unsigned long fps = 0;
 
@@ -656,8 +692,6 @@ void main(void) {
 
   BANK_NUM = 1;
 
-  start_time = clock();
-
   ship_x_fpx = (MAP_WIDTH_TILES * TILE_SIZE_PX / 2);
   ship_x_fpx = ship_x_fpx << 16;
   ship_y_fpx = (MAP_HEIGHT_TILES * TILE_SIZE_PX / 2);
@@ -668,12 +702,22 @@ void main(void) {
   vera_setup();
   joy_install(cx16_std_joy);
   do_mallocs();
+  
+  init_fire_cache(30, 96, 50);
+  fire(50);
+  fire(50);
+  fire(50);
+  fire(50);
+  fire(50);
+  fire(50);
 
   wind_direction = rand() % 24;
   screen_center_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
   screen_center_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
   ship_screen_x_px = screen_center_x_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
   ship_screen_y_px = screen_center_y_px - (SHIP_SPRITE_SIZE_PIXELS / 2);
+
+  start_time = clock();
 
   while (run) {
     joy = joy_read(0);
@@ -689,10 +733,10 @@ void main(void) {
     vera_scroll();
     update_sprites();
 
-    fire(62,146,5);
+    fire(50);
 
     game_frame++;
-    wait();
+    wait(); 
   }
 
   outro();
