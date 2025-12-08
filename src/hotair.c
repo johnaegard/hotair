@@ -42,7 +42,7 @@
 #define FLAK_SHELL_SPRITE_FRAME_BYTES 256
 
 #define MAP_WIDTH_TILES 128
-#define MAP_HEIGHT_TILES 256
+#define MAP_HEIGHT_TILES 128
 #define TILE_SIZE_PX 8 
 #define SHIP_SPRITE_SIZE_PIXELS 32
 #define CROSSHAIR_SPRITE_SIZE_PIXELS 32
@@ -605,7 +605,7 @@ void update_sprites(void) {
 unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x1, 0x07, 0xA, 0xD};
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x0, 0x2, 0x2, 0x07, 0x8, 0x8, 0x8, 0x8};
 
-// Cache for fire tile address offsets
+// Cache for small_fire tile address offsets
 unsigned long fire_addr_cache[FIRE_CACHE_SIZE];
 bool fire_cache_initialized = false;
 unsigned char fire_cache_col = 0xFF;  // Invalid initial value
@@ -637,18 +637,18 @@ unsigned int fire_rand(void) {
   return fire_rng_state;
 }
 
-void fire(unsigned char size) {
+void small_fire(unsigned char size) {
   unsigned char color, frame_offset;
   unsigned int i;
   unsigned long addr;
   unsigned long num_tiles = size * size;
   unsigned int rand_value; 
 
-  frame_offset = game_frame % FRAMES_PER_FIRE_CYCLE;
+  frame_offset = (game_frame/3) % FRAMES_PER_FIRE_CYCLE;
 
   for(i = frame_offset; i < num_tiles; i += FRAMES_PER_FIRE_CYCLE) {
-    rand_value = rand();  // Much faster than system rand()
-    if ((rand_value >> 14) == 0) {  // ~3% chance
+    rand_value = rand();
+    if ((rand_value >> 13) == 0) {  // ~3% chance
       addr = fire_addr_cache[i];
       VERA.address = addr;
       VERA.address_hi = (addr >> 16) | VERA_INC_2;
@@ -658,11 +658,47 @@ void fire(unsigned char size) {
   }
 }
 
+void bigfire(void) {
+  unsigned char color, frame_offset;
+  unsigned int tile_x, tile_y;
+  unsigned long addr;
+  unsigned int rand_value;
+  unsigned int visible_width_tiles = HI_RES ? 80 : 40;  // Visible tiles across
+  unsigned int visible_height_tiles = HI_RES ? 60 : 30; // Visible tiles down
+  unsigned int start_tile_x, start_tile_y;
+  
+  // Calculate which tiles are visible based on scroll position
+  start_tile_x = hscroll / TILE_SIZE_PX;
+  start_tile_y = vscroll / TILE_SIZE_PX;
+  
+  frame_offset = (game_frame) % FRAMES_PER_FIRE_CYCLE;
+  
+  // Update every Nth tile based on frame offset to spread the work
+  for(tile_y = frame_offset; tile_y < visible_height_tiles; tile_y += FRAMES_PER_FIRE_CYCLE) {
+    for(tile_x = 0; tile_x < visible_width_tiles; tile_x += 4) { // Skip every 4th tile horizontally for performance
+      rand_value = rand();
+      if ((rand_value >> 15) == 0) {  // ~1.5% chance (lower than small fire for performance)
+        // Calculate actual tile coordinates on the map
+        unsigned int map_tile_x = (start_tile_x + tile_x) % MAP_WIDTH_TILES;
+        unsigned int map_tile_y = (start_tile_y + tile_y) % MAP_HEIGHT_TILES;
+        
+        // Calculate address for this tile's color data
+        addr = 1 + MAP0_BASE_ADDR + (2 * (map_tile_y * MAP_WIDTH_TILES + map_tile_x));
+        
+        VERA.address = addr;
+        VERA.address_hi = (addr >> 16) | VERA_INC_2;
+        color = (fire_bgcolors[rand_value & 0x07] << 4) | fire_fgcolors[(rand_value >> 10) & 0x03];
+        VERA.data0 = color;
+      }
+    }
+  }
+}
+
 void outro(void) {
   unsigned long fps = 0;
 
   end_time = clock();
-  runtime_seconds = (end_time - start_time) / CLOCKS_PER_SEC;
+  runtime_seconds = 1+ ((end_time - start_time) / CLOCKS_PER_SEC);
   fps = game_frame / runtime_seconds;
 
   // Reset VERA to text mode
@@ -699,18 +735,17 @@ void main(void) {
 
   load_code_banks();
   setup_random();
+  init_fire_cache(30, 96, 50);
+  small_fire(50);
+  small_fire(50);
+  small_fire(50);
+  small_fire(50);
+  small_fire(50);
+  small_fire(50);
   vera_setup();
   joy_install(cx16_std_joy);
   do_mallocs();
   
-  init_fire_cache(30, 96, 50);
-  fire(50);
-  fire(50);
-  fire(50);
-  fire(50);
-  fire(50);
-  fire(50);
-
   wind_direction = rand() % 24;
   screen_center_x_px = (HI_RES ? HIRES_CENTER_X : LOWRES_CENTER_X);
   screen_center_y_px = (HI_RES ? HIRES_CENTER_Y : LOWRES_CENTER_Y);
@@ -732,8 +767,9 @@ void main(void) {
     update_scroll();
     vera_scroll();
     update_sprites();
+    bigfire();
 
-    fire(50);
+//    small_fire(50);
 
     game_frame++;
     wait(); 
