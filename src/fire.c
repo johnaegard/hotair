@@ -35,22 +35,7 @@ unsigned char areg;
 
 #define BANK_NUM (*(unsigned char *)0x00)
 #define ARRAY_2D_ADDRESS 0xA000
-char (*fire)[64] = (char (*)[64])ARRAY_2D_ADDRESS;
-
-#define MAP_HEIGHT_256  0b11000000
-#define MAP_HEIGHT_128  0b10000000
-#define MAP_HEIGHT_64   0b01000000
-#define MAP_HEIGHT_32   0b00000000
-#define MAP_WIDTH_256   0b00110000
-#define MAP_WIDTH_128   0b00100000
-#define MAP_WIDTH_64    0b00010000
-#define MAP_WIDTH_32    0b00000000
-#define T256C_ON        0b00001000
-#define T256C_OFF       0b00000000
-#define BITMAP_ON       0b00000100
-#define BITMAP_OFF      0b00000000
-
-
+char (*fire_data)[64] = (char (*)[64])ARRAY_2D_ADDRESS;
 
 void setup_random(void) {
   // call entropy_get to seed the random number generator
@@ -127,7 +112,8 @@ void vera_setup(void) {
 
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
-  VERA.layer0.config = 0b11100000;
+  // VERA.layer0.config = 0b11100000;
+  VERA.layer0.config = LAYER_MAP_HEIGHT_256 | LAYER_MAP_WIDTH_128 | LAYER_T256C_OFF | LAYER_BITMAP_OFF | LAYER_BPP_1;
   VERA.layer0.tilebase =
     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
     & 0b11111100;             // tile height / width = 8px
@@ -162,6 +148,15 @@ void outro(void) {
   printf("\nfps: %lu\n\n", fps);
 }
 
+unsigned char x, y;
+void fire_setup(void) {
+  for (y = 0; y < 64; y++) {
+    for (x = 0; x < 64; x++) {
+      fire_data[y][x] = (rand() < 3000) ? 1 : 0;
+    }
+  }
+}
+
 void main(void) {
 
   bool run = true;
@@ -169,6 +164,7 @@ void main(void) {
   setup_random();
   vera_setup();
   joy_install(cx16_std_joy);
+  fire_setup();
 
   start_time = clock();
 
@@ -178,7 +174,6 @@ void main(void) {
     if (JOY_DOWN(joy)) {
       run = false;
     }
-    fire();
     game_frame++;
     wait(); 
   }
