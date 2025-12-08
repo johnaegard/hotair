@@ -241,11 +241,11 @@ void fire() {
     VERA.address_hi = 0;
     if (fire_data[rand_y][rand_x] == 1) {
       // Chance to extinguish
-      if (rand() < 500) {
+      if (rand() < 750) {
         fire_data[rand_y][rand_x] = 255;
         // Clear the cell on screen
         VERA.address = fire_addr_offsets[rand_y][rand_x];
-        VERA.data0 = 0x0F;
+        VERA.data0 = 0x02;
       } else {
         // Update fire animation
         VERA.address = fire_addr_offsets[rand_y][rand_x];
