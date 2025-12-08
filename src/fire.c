@@ -44,13 +44,13 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 #define BANK_NUM (*(unsigned char *)0x00)
 #define ARRAY_2D_ADDRESS 0xA000
-char (*fire_data)[64] = (char (*)[64])ARRAY_2D_ADDRESS;
+char (*fire_data)[128] = (char (*)[128])ARRAY_2D_ADDRESS;
+#define FIRE_SAMPLES_PER_FRAME 160  // Configurable number of samples
 
-#define FIRE_SAMPLES_PER_FRAME 200  // Configurable number of samples
 unsigned char rand_x, rand_y;
 unsigned long addr;
 unsigned int sample;
-unsigned int fire_addr_offsets[64][64];
+unsigned int vera_fire_addr_offsets[64][64];
 signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
 signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
 signed char dieroll;
@@ -179,6 +179,14 @@ void fire_color_setup(void) {
     }
   }
 }
+
+// fire dynamics
+#define CHANCE_TO_IGNITE 4000  
+#define FIRE_DURATION 150
+#define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
+#define FIRE_SEED_CHANCE 100
+#define FIRE_SPREAD_CHANCE 10000
+
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
@@ -187,39 +195,40 @@ void fire_setup(void) {
   // Precompute all address offsets
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      fire_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
+      vera_fire_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
     }
   }
   
   // Initial random seeding - lower probability
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      fire_data[r][c] = (rand() < 100) ? 1 : 0; 
+      fire_data[r][c*2] = (rand() < FIRE_SEED_CHANCE) ? FIRE_DURATION : NO_FIRE_MAGIC_VALUE;
     }
   }
   
-  // Multiple passes to spread fire based on neighbors
+
+//  Multiple passes to spread fire based on neighbors
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_data[r][c] == 0) {  // Only consider empty cells
+        if (fire_data[r][c*2] == NO_FIRE_MAGIC_VALUE) {  // Only consider empty cells
           neighbor_count = 0;
           
           // Count neighbors (8-connected)
-          if (fire_data[r-1][c-1]) neighbor_count++;
-          if (fire_data[r-1][c])   neighbor_count++;
-          if (fire_data[r-1][c+1]) neighbor_count++;
-          if (fire_data[r][c-1])   neighbor_count++;
-          if (fire_data[r][c+1])   neighbor_count++;
-          if (fire_data[r+1][c-1]) neighbor_count++;
-          if (fire_data[r+1][c])   neighbor_count++;
-          if (fire_data[r+1][c+1]) neighbor_count++;
-          
+          if (fire_data[r-1][c*2-2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r-1][c*2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r-1][c*2+2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r][c*2-2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r][c*2+2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c*2-2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c*2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c*2+2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
             unsigned int threshold = neighbor_count * 4000;  // Adjust multiplier as needed
             if (rand() < threshold) {
-              fire_data[r][c] = 1;
+              fire_data[r][c*2] = FIRE_DURATION;
             }
           }
         }
@@ -231,8 +240,8 @@ void fire_setup(void) {
 
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      if (fire_data[r][c]) {
-        addr = MAP0_BASE_ADDR + fire_addr_offsets[r][c];
+      if (fire_data[r][c*2] < NO_FIRE_MAGIC_VALUE) {
+        addr = vera_fire_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() & 0b00011111];
       }
@@ -245,34 +254,38 @@ void fire() {
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
     VERA.address_hi = 0;
-    if (fire_data[rand_y][rand_x] == 1) {
-      // Chance to extinguish
-      if (rand() < 100) {
-        fire_data[rand_y][rand_x] = 255;
-        VERA.address = fire_addr_offsets[rand_y][rand_x];
-        VERA.data0 = 0x02;
-      } else {
-        VERA.address = fire_addr_offsets[rand_y][rand_x];
-        VERA.data0 = fire_colors[0b00011111 & rand()];
-        
-        // Chance to spread fire to adjacent cell
-        if (rand() < 3000) {
-          dieroll = rand() & 7;
-          spread_x = rand_x + fire_xpread[dieroll];
-          spread_y = rand_y + fire_ypread[dieroll];
 
-          // Bounds check
-          if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x] == 0) {
-            fire_data[spread_y][spread_x] = 1;
-            VERA.address = fire_addr_offsets[spread_y][spread_x];
-            VERA.data0 = fire_colors[0b00011111 & rand()];
-          }
+    if (fire_data[rand_y][rand_x *2] > FIRE_DURATION) {
+      continue;
+    }
+
+    fire_data[rand_y][rand_x *2]--;
+
+    if (fire_data[rand_y][rand_x*2] == 0) {
+      fire_data[rand_y][rand_x*2] = 255;
+      VERA.address = vera_fire_addr_offsets[rand_y][rand_x];
+      VERA.data0 = 0x0B;
+    } else {
+      VERA.address = vera_fire_addr_offsets[rand_y][rand_x];
+      VERA.data0 = fire_colors[0b00011111 & rand()];
+      
+      // Chance to spread fire to adjacent cell
+      if (rand() < FIRE_SPREAD_CHANCE) {
+        dieroll = rand() & 7;
+        spread_x = rand_x + fire_xpread[dieroll];
+        spread_y = rand_y + fire_ypread[dieroll];
+
+        // Bounds check
+        if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x*2] == NO_FIRE_MAGIC_VALUE) {
+          fire_data[spread_y][spread_x*2] = FIRE_DURATION - (rand() & 36);
+          VERA.address = vera_fire_addr_offsets[spread_y][spread_x];
+          VERA.data0 = fire_colors[0b00011111 & rand()];
         }
       }
     }
   }
 }
-
+ 
 void main(void) {
 
   bool run = true;
@@ -292,7 +305,7 @@ void main(void) {
       run = false;
     }
     game_frame++;
-    fire();
+     fire();
     wait(); 
   }
 

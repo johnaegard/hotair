@@ -1,3 +1,31 @@
+state transitions:
+
+* cell visited
+  * burning cell:
+    * decremented
+      * painted
+      * burned out check
+  * soaked cell: no effect
+  * burned out cell: no effect
+
+* water deposited
+  * on burnt-out cell:
+    * cell is painted as soaked
+    * no other effect
+  * on burning cell:
+    * change of cell being extinguished
+    * if cell extinguished, then cell is soaked
+      * cell is painted as soaked
+* fire spreads:
+  * to burnt-out cell: no effect
+  * to soaked cell: soak lifetime decremented
+  * to unburning cell: chance of ignition
+
+
+
+
+
+
 * flak guns
   * rotate and don't just teleport to the new rotation.
   * shells have a target and not just a fuse
