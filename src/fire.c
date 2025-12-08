@@ -46,11 +46,15 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define ARRAY_2D_ADDRESS 0xA000
 char (*fire_data)[64] = (char (*)[64])ARRAY_2D_ADDRESS;
 
-#define FIRE_SAMPLES_PER_FRAME 64  // Configurable number of samples
+#define FIRE_SAMPLES_PER_FRAME 200  // Configurable number of samples
 unsigned char rand_x, rand_y;
 unsigned long addr;
 unsigned int sample;
 unsigned int fire_addr_offsets[64][64];
+signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
+signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
+signed char dieroll;
+unsigned char spread_x, spread_y;
 
 void setup_random(void) {
   // call entropy_get to seed the random number generator
@@ -156,10 +160,13 @@ void outro(void) {
   VERA.layer1.config = 0b01100000;  // 128x64
   VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
 
+  asm("lda #$03");
+  asm("clc");
+  asm("jsr $FF5F");     // set screen mode and clear
   printf("\n\nend of game");
 
   printf("\n\nframes: %lu", game_frame);
-  printf("\nruntime: %lu seconds", runtime_seconds);
+  printf("\nruntime: %luseconds", runtime_seconds);
   printf("\nfps: %lu\n\n", fps);
 }
 void fire_color_setup(void) {
@@ -187,7 +194,7 @@ void fire_setup(void) {
   // Initial random seeding - lower probability
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      fire_data[r][c] = (rand() < 500) ? 1 : 0;  // Reduced from 2000 to 1000
+      fire_data[r][c] = (rand() < 100) ? 1 : 0; 
     }
   }
   
@@ -210,7 +217,7 @@ void fire_setup(void) {
           
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
-            unsigned int threshold = neighbor_count * 3000;  // Adjust multiplier as needed
+            unsigned int threshold = neighbor_count * 4000;  // Adjust multiplier as needed
             if (rand() < threshold) {
               fire_data[r][c] = 1;
             }
@@ -232,7 +239,6 @@ void fire_setup(void) {
     }
   }
 }
-
 void fire() {
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
@@ -241,21 +247,20 @@ void fire() {
     VERA.address_hi = 0;
     if (fire_data[rand_y][rand_x] == 1) {
       // Chance to extinguish
-      if (rand() < 750) {
+      if (rand() < 100) {
         fire_data[rand_y][rand_x] = 255;
-        // Clear the cell on screen
         VERA.address = fire_addr_offsets[rand_y][rand_x];
         VERA.data0 = 0x02;
       } else {
-        // Update fire animation
         VERA.address = fire_addr_offsets[rand_y][rand_x];
         VERA.data0 = fire_colors[0b00011111 & rand()];
         
         // Chance to spread fire to adjacent cell
-        if (rand() < 8000) {
-          unsigned char spread_x = rand_x + ((rand() & 1) ? 1 : -1);
-          unsigned char spread_y = rand_y + ((rand() & 1) ? 1 : -1);
-          
+        if (rand() < 3000) {
+          dieroll = rand() & 7;
+          spread_x = rand_x + fire_xpread[dieroll];
+          spread_y = rand_y + fire_ypread[dieroll];
+
           // Bounds check
           if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x] == 0) {
             fire_data[spread_y][spread_x] = 1;
