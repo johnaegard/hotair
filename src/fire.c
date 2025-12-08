@@ -182,7 +182,7 @@ void fire_color_setup(void) {
 
 // fire dynamics
 #define CHANCE_TO_IGNITE 4000  
-#define FIRE_DURATION 150
+#define FIRE_DURATION 65
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
 #define FIRE_SPREAD_CHANCE 10000
@@ -248,21 +248,28 @@ void fire_setup(void) {
     }
   }
 }
+
+unsigned char fbi, firebyte, soakbyte;
+
 void fire() {
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
+    fbi = rand_x *2;
+    firebyte = fire_data[rand_y][fbi];
+    soakbyte = fire_data[rand_y][fbi +1];
+
     VERA.address_hi = 0;
 
-    if (fire_data[rand_y][rand_x *2] > FIRE_DURATION) {
+    if (firebyte > FIRE_DURATION) {
       continue;
     }
 
-    fire_data[rand_y][rand_x *2]--;
+    fire_data[rand_y][fbi]--;
 
-    if (fire_data[rand_y][rand_x*2] == 0) {
-      fire_data[rand_y][rand_x*2] = 255;
+    if (fire_data[rand_y][fbi] == 0) {
+      fire_data[rand_y][fbi] = 255;
       VERA.address = vera_fire_addr_offsets[rand_y][rand_x];
       VERA.data0 = 0x0B;
     } else {
