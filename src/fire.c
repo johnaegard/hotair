@@ -255,11 +255,38 @@ void fire_setup(void) {
       }
     }
   }
+  for (pass = 0; pass < 3; pass++) {
+    for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
+      for (c = 1; c < 63; c++) {
+        if (water_data[r][c] == 0) { 
+          neighbor_count = 0;
+          
+          // Count neighbors (8-connected)
+          if (water_data[r-1][c-1] > 0) neighbor_count++;
+          if (water_data[r-1][c]   > 0) neighbor_count++;
+          if (water_data[r-1][c+1] > 0) neighbor_count++;
+          if (water_data[r][c-1]   > 0) neighbor_count++;
+          if (water_data[r][c+1]   > 0) neighbor_count++;
+          if (water_data[r+1][c-1] > 0) neighbor_count++;
+          if (water_data[r+1][c]   > 0) neighbor_count++;
+          if (water_data[r+1][c+1]  > 0) neighbor_count++;
+
+          // Higher probability based on neighbor count
+          if (neighbor_count > 0) {
+            unsigned int threshold = neighbor_count * 4500;
+            if (rand() < threshold) {
+              water_data[r][c] = SOAK_DURATION;
+            }
+          }
+        }
+      }
+    }
+  }
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_data[r][c] == NO_FIRE_MAGIC_VALUE) { 
+        if (fire_data[r][c] == NO_FIRE_MAGIC_VALUE && water_data[r][c] == 0) { 
           neighbor_count = 0;
           
           // Count neighbors (8-connected)
