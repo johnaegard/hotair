@@ -41,8 +41,8 @@ def overlay(w,h):
   b += bytes([2,3])
   for row in range(h):
     for col in range(w):
-      color = 0x01 if col <70 else 0xC1
-      if col == 70:
+      color = 0x01 if col <64 else 0xC1
+      if col == 64:
         if row == 0:
           char = 0x4f
         elif row == 59:
@@ -56,9 +56,9 @@ def overlay(w,h):
           char = 0x7a;
         else:
           char = 0x6a;
-      elif row == 0 and col >= 70 and col <= 78:
+      elif row == 0 and col >= 64 and col <= 78:
           char = 0x77;
-      elif row == 59 and col >= 70 and col <= 78:
+      elif row == 59 and col >= 64 and col <= 78:
           char = 0x6f;
       else:
         char=0x20;

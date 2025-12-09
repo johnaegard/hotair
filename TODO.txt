@@ -16,12 +16,15 @@ state transitions:
     * change of cell being extinguished
     * if cell extinguished, then cell is soaked
       * cell is painted as soaked
+
 * fire spreads:
   * to burnt-out cell: no effect
   * to soaked cell: soak lifetime decremented
   * to unburning cell: chance of ignition
 
+* explosions!!
 
+* rescue game!  fight the fire and drop markers to summon rescue helicopters.  
 
 
 

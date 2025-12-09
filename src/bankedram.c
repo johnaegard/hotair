@@ -5,7 +5,7 @@
 #define BANK_NUM (*(unsigned char *)0x00)
 #define ARRAY_2D_ADDRESS 0xA000
 
-char (*array_2d)[64] = (char (*)[64])ARRAY_2D_ADDRESS;
+char (*array_2d)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 
 void main(void) {
     

@@ -43,13 +43,15 @@ unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x07, 0x0A, 0x0D};
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 #define BANK_NUM (*(unsigned char *)0x00)
-#define ARRAY_2D_ADDRESS 0xA000
-char (*fire_data)[128] = (char (*)[128])ARRAY_2D_ADDRESS;
+#define FIRE_DATA_ADDRESS 0xA000
+#define WATER_DATA_ADDRESS 0xB000
+char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
+char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 
 unsigned char rand_x, rand_y;
 unsigned long addr;
 unsigned int sample;
-unsigned int vera_fire_addr_offsets[64][64];
+unsigned int vera_tilemap_addr_offsets[64][64];
 signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
 signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
 signed char dieroll;
@@ -62,7 +64,7 @@ void setup_random(void) {
   srand(areg);
 }
 
-unsigned char error_flag = 0;
+unsigned char error_num = 0;
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
 #define SKIP_2_BYTE_HEADER 0
@@ -103,16 +105,15 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // //   3, loads into VRAM, starting from 0x10000 + the specified starting address.
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
-  //printf("%1c\n", 0xba );
 
-  error_flag = 0;
+  error_num = 0;
   __asm__("bcc noerror");
   __asm__("lda #1");
-  __asm__("sta %v", error_flag);
+  __asm__("sta %v", error_num);
   __asm__("noerror:");
 
-  if (error_flag) {
-    printf("x ERR#%02u\n", error_flag);
+  if (error_num) {
+    printf("x ERR#%02u\n", error_num);
     exit(1);
   }
   else {
@@ -151,7 +152,7 @@ void vera_setup(void) {
       break;
     }
   }
-
+  printf("%c", 147 );
   // petsci upper / gfx
 
   asm("lda #2");
@@ -163,8 +164,12 @@ void vera_setup(void) {
 
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
-  // VERA.layer0.config = 0b11100000;
-  VERA.layer0.config = LAYER_MAP_HEIGHT_64 | LAYER_MAP_WIDTH_64 | LAYER_T256C_OFF | LAYER_BITMAP_OFF | LAYER_BPP_1;
+  VERA.layer0.config = 
+    LAYER_MAP_HEIGHT_64 | 
+    LAYER_MAP_WIDTH_64 | 
+    LAYER_T256C_OFF | 
+    LAYER_BITMAP_OFF | 
+    LAYER_BPP_1;
   VERA.layer0.tilebase =
     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
     & 0b11111100;             // tile height / width = 8px
@@ -198,7 +203,7 @@ void outro(void) {
   printf("\n\nend of game");
 
   printf("\n\nframes: %lu", game_frame);
-  printf("\nruntime: %luseconds", runtime_seconds);
+  printf("\nruntime: %lu seconds", runtime_seconds);
   printf("\nfps: %lu\n\n", fps);
 }
 void fire_color_setup(void) {
@@ -213,12 +218,15 @@ void fire_color_setup(void) {
 }
 
 // fire dynamics
-#define FIRE_SAMPLES_PER_FRAME 100 
-#define CHANCE_TO_IGNITE 10000  
-#define FIRE_DURATION 65
+#define FIRE_SAMPLES_PER_FRAME 72 
+#define FIRE_DURATION 10
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 20000
+#define FIRE_SPREAD_CHANCE 50000
+#define SOAKED_SEED_CHANCE 500
+#define SOAK_DURATION 5
+
+unsigned int die_roll;
 
 void fire_setup(void) {
   unsigned char c, r;
@@ -228,38 +236,47 @@ void fire_setup(void) {
   // Precompute all address offsets
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      vera_fire_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
+      vera_tilemap_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
     }
   }
   
   // Initial random seeding - lower probability
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      fire_data[r][c*2] = (rand() < FIRE_SEED_CHANCE) ? FIRE_DURATION : NO_FIRE_MAGIC_VALUE;
+      die_roll = rand();
+      if (die_roll < FIRE_SEED_CHANCE) {
+        fire_data[r][c] = FIRE_DURATION;
+        water_data[r][c] = 0;
+      } else if (die_roll < SOAKED_SEED_CHANCE) {
+        water_data[r][c] = SOAK_DURATION;
+      } else {
+        fire_data[r][c] = NO_FIRE_MAGIC_VALUE;
+        water_data[r][c] = 0;
+      }
     }
   }
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_data[r][c*2] == NO_FIRE_MAGIC_VALUE) {  // Only consider empty cells
+        if (fire_data[r][c] == NO_FIRE_MAGIC_VALUE) { 
           neighbor_count = 0;
           
           // Count neighbors (8-connected)
-          if (fire_data[r-1][c*2-2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r-1][c*2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r-1][c*2+2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r][c*2-2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r][c*2+2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c*2-2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c*2]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c*2+2] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r-1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r-1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r-1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r][c-1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r][c+1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_data[r+1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
-            unsigned int threshold = neighbor_count * 4000;  // Adjust multiplier as needed
+            unsigned int threshold = neighbor_count * 4500;
             if (rand() < threshold) {
-              fire_data[r][c*2] = FIRE_DURATION;
+              fire_data[r][c] = FIRE_DURATION;
             }
           }
         }
@@ -271,10 +288,15 @@ void fire_setup(void) {
 
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      if (fire_data[r][c*2] < NO_FIRE_MAGIC_VALUE) {
-        addr = vera_fire_addr_offsets[r][c];
+      if (fire_data[r][c] < NO_FIRE_MAGIC_VALUE) {
+        addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() & 0b00011111];
+      }
+      if (water_data[r][c] > 0) {
+        addr = vera_tilemap_addr_offsets[r][c];
+        VERA.address = addr;
+        VERA.data0 = 0x61;
       }
     }
   }
@@ -287,9 +309,7 @@ void fire() {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
-    fbi = rand_x *2;
-    firebyte = fire_data[rand_y][fbi];
-    soakbyte = fire_data[rand_y][fbi +1];
+    firebyte = fire_data[rand_y][rand_x];
 
     VERA.address_hi = 0;
 
@@ -297,14 +317,14 @@ void fire() {
       continue;
     }
 
-    fire_data[rand_y][fbi]--;
+    fire_data[rand_y][rand_x]--;
 
-    if (fire_data[rand_y][fbi] == 0) {
-      fire_data[rand_y][fbi] = 255;
-      VERA.address = vera_fire_addr_offsets[rand_y][rand_x];
+    if (fire_data[rand_y][rand_x] == 0) {
+      fire_data[rand_y][rand_x] = 255;
+      VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       VERA.data0 = 0x0B;
     } else {
-      VERA.address = vera_fire_addr_offsets[rand_y][rand_x];
+      VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       VERA.data0 = fire_colors[0b00011111 & rand()];
       
       // Chance to spread fire to adjacent cell
@@ -314,9 +334,9 @@ void fire() {
         spread_y = rand_y + fire_ypread[dieroll];
 
         // Bounds check
-        if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x*2] == NO_FIRE_MAGIC_VALUE) {
-          fire_data[spread_y][spread_x*2] = FIRE_DURATION - (rand() & 36);
-          VERA.address = vera_fire_addr_offsets[spread_y][spread_x];
+        if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
+          fire_data[spread_y][spread_x] = FIRE_DURATION - (rand() & 0);
+          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
           VERA.data0 = fire_colors[0b00011111 & rand()];
         }
       }
@@ -350,4 +370,3 @@ void main(void) {
   outro();
 
 }
-
