@@ -45,7 +45,6 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define BANK_NUM (*(unsigned char *)0x00)
 #define ARRAY_2D_ADDRESS 0xA000
 char (*fire_data)[128] = (char (*)[128])ARRAY_2D_ADDRESS;
-#define FIRE_SAMPLES_PER_FRAME 160  // Configurable number of samples
 
 unsigned char rand_x, rand_y;
 unsigned long addr;
@@ -62,6 +61,8 @@ void setup_random(void) {
   asm("STA %v", areg);  // Added missing '&' for address reference
   srand(areg);
 }
+
+unsigned char error_flag = 0;
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
 #define SKIP_2_BYTE_HEADER 0
@@ -74,6 +75,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
 
   // You have to first set the name of the file you are working with.
   cbm_k_setnam(filename);
+  printf("Loading %-15s $%05lx ", filename, base_addr);
 
   // Next you setup the LFS (Logical File) for the file
   // First param is the Logical File Number
@@ -101,17 +103,34 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // //   3, loads into VRAM, starting from 0x10000 + the specified starting address.
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
+  //printf("%1c\n", 0xba );
+
+  error_flag = 0;
+  __asm__("bcc noerror");
+  __asm__("lda #1");
+  __asm__("sta %v", error_flag);
+  __asm__("noerror:");
+
+  if (error_flag) {
+    printf("x %u\n", error_flag);
+    exit(1);
+  }
+  else {
+    printf("%1c\n", 0xba );
+  }
+
 }
+
+unsigned char keycode;
+
 void vera_setup(void) {
-
-  // petsci upper / gfx
-
-  asm("lda #2");
-  asm("jsr $FF62");
 
 #ifdef DEBUG_CONSOLE  
   return;
 #endif
+
+  printf("%c", 147 );
+  videomode(4);
 
   load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
@@ -124,6 +143,19 @@ void vera_setup(void) {
   load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
+
+  while(1) {
+    asm("jsr $FFE4");
+    asm("sta %v", keycode);
+    if (keycode) {
+      break;
+    }
+  }
+
+  // petsci upper / gfx
+
+  asm("lda #2");
+  asm("jsr $FF62");
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
   VERA.display.hscale = HI_RES ? 128 : 64;
@@ -181,11 +213,12 @@ void fire_color_setup(void) {
 }
 
 // fire dynamics
-#define CHANCE_TO_IGNITE 4000  
+#define FIRE_SAMPLES_PER_FRAME 100 
+#define CHANCE_TO_IGNITE 10000  
 #define FIRE_DURATION 65
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 10000
+#define FIRE_SPREAD_CHANCE 20000
 
 void fire_setup(void) {
   unsigned char c, r;
@@ -205,9 +238,7 @@ void fire_setup(void) {
       fire_data[r][c*2] = (rand() < FIRE_SEED_CHANCE) ? FIRE_DURATION : NO_FIRE_MAGIC_VALUE;
     }
   }
-  
 
-//  Multiple passes to spread fire based on neighbors
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
