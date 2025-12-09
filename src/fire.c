@@ -112,7 +112,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   __asm__("noerror:");
 
   if (error_flag) {
-    printf("x %u\n", error_flag);
+    printf("x ERR#%02u\n", error_flag);
     exit(1);
   }
   else {
@@ -130,7 +130,7 @@ void vera_setup(void) {
 #endif
 
   printf("%c", 147 );
-  videomode(4);
+  videomode(3);
 
   load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
