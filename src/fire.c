@@ -219,12 +219,13 @@ void fire_color_setup(void) {
 
 // fire dynamics
 #define FIRE_SAMPLES_PER_FRAME 72 
-#define FIRE_DURATION 10
+#define FIRE_DURATION 25
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 50000
+#define FIRE_SPREAD_CHANCE 7500
 #define SOAKED_SEED_CHANCE 500
-#define SOAK_DURATION 5
+#define SOAK_DURATION 10
+#define BURNT_OUT 255
 
 unsigned int die_roll;
 
@@ -273,7 +274,7 @@ void fire_setup(void) {
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
-            unsigned int threshold = neighbor_count * 4500;
+            unsigned int threshold = neighbor_count * 4800;
             if (rand() < threshold) {
               water_data[r][c] = SOAK_DURATION;
             }
@@ -323,20 +324,20 @@ void fire_setup(void) {
       if (water_data[r][c] > 0) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
-        VERA.data0 = 0x61;
+        VERA.data0 = 0x60;
       }
     }
   }
 }
 
 unsigned char fbi, firebyte, soakbyte;
-
 void fire() {
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
     firebyte = fire_data[rand_y][rand_x];
+    soakbyte = water_data[rand_y][rand_x];
 
     VERA.address_hi = 0;
 
@@ -347,30 +348,31 @@ void fire() {
     fire_data[rand_y][rand_x]--;
 
     if (fire_data[rand_y][rand_x] == 0) {
-      fire_data[rand_y][rand_x] = 255;
+      fire_data[rand_y][rand_x] = BURNT_OUT;
       VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       VERA.data0 = 0x0B;
     } else {
       VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       VERA.data0 = fire_colors[0b00011111 & rand()];
-      
-      // Chance to spread fire to adjacent cell
+
       if (rand() < FIRE_SPREAD_CHANCE) {
         dieroll = rand() & 7;
         spread_x = rand_x + fire_xpread[dieroll];
         spread_y = rand_y + fire_ypread[dieroll];
-
-        // Bounds check
-        if (spread_x < 64 && spread_y < 64 && fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
-          fire_data[spread_y][spread_x] = FIRE_DURATION - (rand() & 0);
-          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
-          VERA.data0 = fire_colors[0b00011111 & rand()];
+        if (spread_x < 64 && spread_y < 64) {
+          if (water_data[spread_y][spread_x] > 0) {
+            water_data[spread_y][spread_x]--;
+          }
+          else if (fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
+            fire_data[spread_y][spread_x] = FIRE_DURATION - (rand() & 0);
+            VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
+            VERA.data0 = fire_colors[0b00011111 & rand()];
+          }
         }
       }
     }
   }
 }
- 
 void main(void) {
 
   bool run = true;

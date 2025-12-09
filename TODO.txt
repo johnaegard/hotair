@@ -2,11 +2,11 @@ state transitions:
 
 * cell visited
   * burning cell:
-    * decremented
-      * painted
-      * burned out check
-  * soaked cell: no effect
-  * burned out cell: no effect
+    X decremented
+      X painted
+      X burned out check
+  X soaked cell: no effect
+  X burned out cell: no effect
 
 * water deposited
   * on burnt-out cell:
@@ -18,9 +18,9 @@ state transitions:
       * cell is painted as soaked
 
 * fire spreads:
-  * to burnt-out cell: no effect
-  * to soaked cell: soak lifetime decremented
-  * to unburning cell: chance of ignition
+  X to burnt-out cell: no effect
+  X to soaked cell: soak lifetime decremented
+  X to unburning cell: chance of ignition
 
 * explosions!!
 
