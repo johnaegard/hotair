@@ -222,7 +222,7 @@ void fire_color_setup(void) {
 #define FIRE_DURATION 30
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 20000
+#define FIRE_SPREAD_CHANCE 10000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -349,7 +349,7 @@ void fire() {
 
     if (fire_data[rand_y][rand_x] == 0) {
       fire_data[rand_y][rand_x] = BURNT_OUT;
-      if ((rand() & 3) == 0) {
+      if ((rand() % 3) == 0) {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
         VERA.data0 = 0x66;
       }
