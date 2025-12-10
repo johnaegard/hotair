@@ -29,8 +29,8 @@ def junkyard_petscii(w,h):
         elif roll < 99: 
           color_grid[row][col] = color_grid[row+1][col]
 
-  for row in range(256):
-    for col in range(128):
+  for row in range(h):
+    for col in range(w):
       tile = random.randint(0x40,0x7f)
       color = color_grid[row][col]
       b += bytes([tile,color])
@@ -80,9 +80,8 @@ def draw_block(w,row,col,b):
   b[row2_byte:row2_byte+8] = bytes([0x42,color,0x20,color,0x20,color,0x42,color])
   b[row3_byte:row3_byte+8] = bytes([0x6d,color,0x40,color,0x40,color,0x7d,color])
 
-
-w=128
-h=256
+w=64
+h=64
 b = junkyard_petscii(w,h)
 
 ccol = int((w/2) -2)

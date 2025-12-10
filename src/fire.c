@@ -35,11 +35,11 @@ clock_t end_time;
 unsigned long runtime_seconds;
 unsigned char areg;
 
-#define FIRE_NUM_FG_COLORS 4
-#define FIRE_NUM_BG_COLORS 8
+#define FIRE_NUM_BG_COLORS 4
+#define FIRE_NUM_FG_COLORS 8
 #define FIRE_COLOR_COMBINATIONS (FIRE_NUM_FG_COLORS * FIRE_NUM_BG_COLORS)
-unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x00, 0x20, 0x20, 0x70, 0x80, 0x80, 0x80, 0x80};
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x07, 0x0A, 0x0D};
+unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x20, 0x70, 0x80, 0xA0};
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x02, 0x03,0x07, 0x08, 0x0A, 0x0D, 0x0F};
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 #define BANK_NUM (*(unsigned char *)0x00)
@@ -219,10 +219,10 @@ void fire_color_setup(void) {
 
 // fire dynamics
 #define FIRE_SAMPLES_PER_FRAME 72 
-#define FIRE_DURATION 25
+#define FIRE_DURATION 30
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 7500
+#define FIRE_SPREAD_CHANCE 20000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -319,7 +319,7 @@ void fire_setup(void) {
       if (fire_data[r][c] < NO_FIRE_MAGIC_VALUE) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
-        VERA.data0 = fire_colors[rand() & 0b00011111];
+        VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
       }
       if (water_data[r][c] > 0) {
         addr = vera_tilemap_addr_offsets[r][c];
@@ -339,7 +339,7 @@ void fire() {
     firebyte = fire_data[rand_y][rand_x];
     soakbyte = water_data[rand_y][rand_x];
 
-    VERA.address_hi = 0;
+    VERA.address_hi = 0 | VERA_INC_1;
 
     if (firebyte > FIRE_DURATION) {
       continue;
@@ -349,11 +349,17 @@ void fire() {
 
     if (fire_data[rand_y][rand_x] == 0) {
       fire_data[rand_y][rand_x] = BURNT_OUT;
-      VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
-      VERA.data0 = 0x0B;
+      if ((rand() & 3) == 0) {
+        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
+        VERA.data0 = 0x66;
+      }
+      else {
+        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
+      }
+      VERA.data0 = 0xB0;
     } else {
       VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
-      VERA.data0 = fire_colors[0b00011111 & rand()];
+      VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
 
       if (rand() < FIRE_SPREAD_CHANCE) {
         dieroll = rand() & 7;
@@ -366,7 +372,7 @@ void fire() {
           else if (fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
             fire_data[spread_y][spread_x] = FIRE_DURATION - (rand() & 0);
             VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
-            VERA.data0 = fire_colors[0b00011111 & rand()];
+            VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
           }
         }
       }
@@ -379,6 +385,7 @@ void main(void) {
 
   setup_random();
   vera_setup();
+
   joy_install(cx16_std_joy);
   fire_color_setup();
   fire_setup();
@@ -392,7 +399,7 @@ void main(void) {
       run = false;
     }
     game_frame++;
-     fire();
+    fire();
     wait(); 
   }
 

@@ -17,7 +17,7 @@ state transitions:
     * if cell extinguished, then cell is soaked
       * cell is painted as soaked
 
-* fire spreads:
+X fire spreads:
   X to burnt-out cell: no effect
   X to soaked cell: soak lifetime decremented
   X to unburning cell: chance of ignition
