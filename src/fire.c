@@ -6,13 +6,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-
+vi MAP0_BASE_ADDR
 #include "wait.h"
 #include "vera.h"
 
-#define MAP0_BASE_ADDR 0x00000
-#define SHIP_SPRITE_BASE_ADDR 0x10000
-#define MAP1_BASE_ADDR 0x12800
+#define MAP0_BASE_ADDR 0x0000
+#define MAP1_BASE_ADDR 0x2000
+#define CHARSET_BASE_ADDR 0x1F000
+
 #define NEEDLE_SPRITE_BASE_ADDR 0x16800
 #define CIRCLE_SPRITE_BASE_ADDR 0x17600
 #define MONOPLANE_SPRITE_BASE_ADDR 0x17800
@@ -21,7 +22,6 @@
 #define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
 #define FLAK_SHELL_SPRITE_BASE_ADDR 0x18F00
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
-#define CHARSET_BASE_ADDR 0x1F000
 #define PALETTE_BASE_ADDR 0x1FA00
 
 #define HI_RES true
@@ -43,8 +43,8 @@ unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x02, 0x03,0x07, 0x08, 
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 #define BANK_NUM (*(unsigned char *)0x00)
-#define FIRE_DATA_ADDRESS 0xA000
-#define WATER_DATA_ADDRESS 0xB000
+#define FIRE_DATA_ADDRESS 0xA000   // banked ram window
+#define WATER_DATA_ADDRESS 0xB000 
 char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 
@@ -77,7 +77,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
 
   // You have to first set the name of the file you are working with.
   cbm_k_setnam(filename);
-  printf("Loading %-15s $%05lx ", filename, base_addr);
+  printf("  %-15s $%05lx ", filename, base_addr);
 
   // Next you setup the LFS (Logical File) for the file
   // First param is the Logical File Number
@@ -90,7 +90,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // 1 - File has the 2 byte header, use it
   // 2 - File does NOT have the 2 byte header
 
-  cbm_k_setlfs(0, 8, secondary_address);
+  cbm_k_setlfs(SKIP_2_BYTE_HEADER, 8, secondary_address);
 
   if (base_addr >= 0x10000) {
     base_addr -= 0x10000;
@@ -113,48 +113,32 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   __asm__("noerror:");
 
   if (error_num) {
-    printf("x ERR#%02u\n", error_num);
+    printf("%1c%1c err#%02u%1c\n",28,0x71,error_num,5);
     exit(1);
   }
   else {
-    printf("%1c\n", 0xba );
+    printf("%1c%1c%1c\n", 30, 0x73, 5);
   }
-
 }
 
 unsigned char keycode;
 
+void vera_loads(void) {
+  load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  // load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  // load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
+}
 void vera_setup(void) {
 
-#ifdef DEBUG_CONSOLE  
-  return;
-#endif
-
-  printf("%c", 147 );
-  videomode(3);
-
-  load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
-
-  while(1) {
-    asm("jsr $FFE4");
-    asm("sta %v", keycode);
-    if (keycode) {
-      break;
-    }
-  }
-  printf("%c", 147 );
   // petsci upper / gfx
-
   asm("lda #2");
   asm("jsr $FF62");
 
@@ -188,19 +172,19 @@ void outro(void) {
 
   // Reset VERA to text mode
   VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
-  VERA.display.hscale = 64;         // Reset scale to 320x240
-  VERA.display.vscale = 64;         // Reset scale to 320x240
-
+ 
   // Reset layer 0 to default text mode configuration
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
   VERA.layer1.config = 0b01100000;  // 128x64
   VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
 
-  asm("lda #$03");
-  asm("clc");
-  asm("jsr $FF5F");     // set screen mode and clear
-  printf("\n\nend of game");
+  //petsci lower / gfx 80x30
+  asm("lda #2");
+  asm("jsr $FF62");
+  videomode(3);
+
+  printf("end of game");
 
   printf("\n\nframes: %lu", game_frame);
   printf("\nruntime: %lu seconds", runtime_seconds);
@@ -218,11 +202,11 @@ void fire_color_setup(void) {
 }
 
 // fire dynamics
-#define FIRE_SAMPLES_PER_FRAME 72 
-#define FIRE_DURATION 30
+#define FIRE_SAMPLES_PER_FRAME 72
+#define FIRE_DURATION 50
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 10000
+#define FIRE_SPREAD_CHANCE 16000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -330,24 +314,33 @@ void fire_setup(void) {
   }
 }
 
-unsigned char fbi, firebyte, soakbyte;
-void fire() {
+unsigned char firebyte;
+void burn() {
+
+  VERA.address_hi = 0 | VERA_INC_1;
+
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
     firebyte = fire_data[rand_y][rand_x];
-    soakbyte = water_data[rand_y][rand_x];
 
-    VERA.address_hi = 0 | VERA_INC_1;
-
+    // 
+    // YOU DO NOT BURN
+    //
     if (firebyte > FIRE_DURATION) {
       continue;
     }
 
+    // 
+    // YOU BURN 
+    //
     fire_data[rand_y][rand_x]--;
 
-    if (fire_data[rand_y][rand_x] == 0) {
+    // 
+    // YOU BURN OUT
+    //
+    if (firebyte == 0) {
       fire_data[rand_y][rand_x] = BURNT_OUT;
       if ((rand() % 3) == 0) {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
@@ -356,24 +349,31 @@ void fire() {
       else {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       }
-      VERA.data0 = 0xB0;
-    } else {
-      VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
-      VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
+      VERA.data0 = 0xB0;      
+      continue;
+    } 
 
-      if (rand() < FIRE_SPREAD_CHANCE) {
-        dieroll = rand() & 7;
-        spread_x = rand_x + fire_xpread[dieroll];
-        spread_y = rand_y + fire_ypread[dieroll];
-        if (spread_x < 64 && spread_y < 64) {
-          if (water_data[spread_y][spread_x] > 0) {
-            water_data[spread_y][spread_x]--;
-          }
-          else if (fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
-            fire_data[spread_y][spread_x] = FIRE_DURATION - (rand() & 0);
-            VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
-            VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
-          }
+    // 
+    // YOU TWINKLE
+    //
+    VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
+    VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
+
+    //
+    // YOU SPREAD
+    //
+    if (rand() < FIRE_SPREAD_CHANCE) {
+      dieroll = rand() % 7;
+      spread_x = rand_x + fire_xpread[dieroll];
+      spread_y = rand_y + fire_ypread[dieroll];
+      if (spread_x >= 0 && spread_x < 64 && spread_y>=0 && spread_y < 64) {
+        if (water_data[spread_y][spread_x] > 0) {
+          water_data[spread_y][spread_x]--;
+        }
+        else if (fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
+          fire_data[spread_y][spread_x] = FIRE_DURATION;
+          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
+          VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
         }
       }
     }
@@ -384,11 +384,31 @@ void main(void) {
   bool run = true;
 
   setup_random();
-  vera_setup();
 
+  asm("lda #2");
+  asm("jsr $FF62");
+  videomode(3);
+
+  asm("sec");
+  asm("jsr $FF5F");
+  asm("lda #1");
+  asm("jsr $FF68");   // Call mouse_config Kernal Function
+  wait();             // Wait a cycle for the mouse to fully activate
+
+  printf("loading vera\n");
+  vera_loads();
   joy_install(cx16_std_joy);
+  printf("\nrandomizing fire");
   fire_color_setup();
   fire_setup();
+  vera_setup();
+
+  //mousey
+  asm("ldx #80");
+  asm("ldy #60");
+  asm("lda #1");
+  asm("jsr $FF68");   // Call mouse_config Kernal Function
+  wait();             // Wait a cycle for the mouse to fully activate
 
   start_time = clock();
 
@@ -399,7 +419,7 @@ void main(void) {
       run = false;
     }
     game_frame++;
-    fire();
+    burn();
     wait(); 
   }
 

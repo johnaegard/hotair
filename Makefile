@@ -1,4 +1,5 @@
 CC=cl65
+X16=../x16emu/x16emu -capture -run
 
 hotair:
 	$(CC) -O -o HOTAIR.PRG -t cx16 -Ln hotair.lbl -C cx16-bank.cfg src/hotair.c src/wait.c
@@ -22,4 +23,16 @@ fire:
 	$(CC) -O -o build/FIRE.PRG -t cx16 src/fire.c src/wait.c
 
 run: fire
-	../x16emu/x16emu -prg build/FIRE.PRG -run -debug
+	$(X16) -debug -prg build/FIRE.PRG
+
+benchmark:
+	$(CC) -O -o build/BENCHMARK.PRG -t cx16 src/benchmark.c
+
+runbenchmark: benchmark
+	../x16emu/x16emu -prg build/BENCHMARK.PRG -run -debug
+
+benchmark-reads:
+	$(CC) -O -o build/BENCHMARK-READS.PRG -t cx16 src/benchmark-reads.c
+
+runbenchmark-reads: benchmark-reads
+	../x16emu/x16emu  -prg build/BENCHMARK-READS.PRG -run -debug

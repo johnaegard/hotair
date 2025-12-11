@@ -23,11 +23,8 @@ X fire spreads:
   X to unburning cell: chance of ignition
 
 * explosions!!
-
+* fire spreads in direction of wind
 * rescue game!  fight the fire and drop markers to summon rescue helicopters.  
-
-
-
 
 * flak guns
   * rotate and don't just teleport to the new rotation.

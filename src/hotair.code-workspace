@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../x16-docs"
+		},
+		{
+			"path": "../../cx16CodingInC"
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"editorCursor.foreground": "#ffff00",
+			"terminalCursor.foreground": "#ff3300"
+		},
+		"files.associations": {
+			"cbm.h": "c",
+			"cx16.h": "c",
+			"typeinfo": "c"
+		},
+		"makefile.configureOnOpen": true
+	}
+}

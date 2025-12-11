@@ -60,3 +60,8 @@ dkms.conf
 
 .vscode*
 .vscode/*
+
+build/*
+
+*.PRG.0*
+*.PRG
