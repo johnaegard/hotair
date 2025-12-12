@@ -1,5 +1,5 @@
 CC=cl65
-X16=../x16emu/x16emu -capture -run
+X16=../x16emu/x16emu -run
 
 hotair:
 	$(CC) -O -o HOTAIR.PRG -t cx16 -Ln hotair.lbl -C cx16-bank.cfg src/hotair.c src/wait.c

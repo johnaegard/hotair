@@ -51,14 +51,19 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define BURNT_OUT 255
 
 //FIRE MEMORY
-#define BANK_NUM (*(unsigned char *)0x00)
-#define FIRE_DATA_ADDRESS 0xA000   // banked ram window
-#define WATER_DATA_ADDRESS 0xB000 
-char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
-char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+// #define BANK_NUM (*(unsigned char *)0x00)
+// #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
+// #define WATER_DATA_ADDRESS 0xB000 
+// char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
+// char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+
+static char fire_data_array[64][64];
+static char water_data_array[64][64];
+char (*fire_data)[64] = fire_data_array;
+char (*water_data)[64] = water_data_array;
 
 // WIND
-#define WIND_CHANGE_CHANCE 3000
+#define WIND_CHANGE_CHANCE 750
 #define WIND_DIRECTIONS 24
 #define WIND_GAUGE_X_PX 600
 #define WIND_GAUGE_Y_PX 440
@@ -69,8 +74,8 @@ char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 // the mouse cursor sprite
 #define SPRITE_DEF_SIZE_BYTES 8
 #define NEEDLE_SPRITE_FRAME_BYTES 512
-#define WIND_GAUGE_NEEDLE_SPRITE_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
-#define WIND_GAUGE_CIRCLE_SPRITE_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
+#define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
+#define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
 
 typedef struct {
   unsigned char flips;
@@ -93,7 +98,7 @@ signed char dieroll;
 unsigned char spread_x, spread_y, keycode;
 unsigned char file_error_num = 0;
 unsigned int die_roll;  /// ugh
-signed char wind_direction = 0;
+signed char wind_direction = 12;
 signed char needle_sprite_frame;
 SpriteFrame* sprite_frame;
 
@@ -409,8 +414,8 @@ void wind_update(void) {
 void wind_sprites_setup(void) {
 
   // WIND GAUGE CIRCLE
-  VERA.address = WIND_GAUGE_CIRCLE_SPRITE_ADDR;
-  VERA.address_hi = WIND_GAUGE_CIRCLE_SPRITE_ADDR >> 16;
+  VERA.address = WIND_CIRCLE_SPRITE_ATTR_ADDR;
+  VERA.address_hi = WIND_CIRCLE_SPRITE_ATTR_ADDR >> 16;
   VERA.address_hi |= VERA_INC_1;
 
   VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
@@ -424,12 +429,11 @@ void wind_sprites_setup(void) {
 }
 void wind_sprite_update(void) {
 
-  VERA.address = WIND_GAUGE_NEEDLE_SPRITE_ADDR;
-  VERA.address_hi = WIND_GAUGE_NEEDLE_SPRITE_ADDR >> 16;
+  VERA.address    = WIND_NEEDLE_SPRITE_ATTR_ADDR;
+  VERA.address_hi = WIND_NEEDLE_SPRITE_ATTR_ADDR >> 16;
   VERA.address_hi |= VERA_INC_1;
 
-  needle_sprite_frame = wind_direction;
-  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
+  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, wind_direction);
   VERA.data0 = sprite_frame->frame_addr >> 5;
   VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
   VERA.data0 = WIND_GAUGE_X_PX;
