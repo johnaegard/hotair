@@ -53,14 +53,9 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 // FIRE MEMORY
 #define BANK_NUM (*(unsigned char *)0x00)
 #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
-#define WATER_DATA_ADDRESS 0xB000 
+#define WATER_DATA_ADDRESS 0xB000  // top half of banked ram window
 char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
-
-// static char fire_data_array[64][64];
-// static char water_data_array[64][64];
-// char (*fire_data)[64] = fire_data_array;
-// char (*water_data)[64] = water_data_array;
 
 // WIND
 #define WIND_CHANGE_CHANCE 750

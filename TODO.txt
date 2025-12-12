@@ -1,12 +1,14 @@
 state transitions:
 
-* cell visited
-  * burning cell:
-    X decremented
-      X painted
-      X burned out check
-  X soaked cell: no effect
-  X burned out cell: no effect
+* explosions!!
+  * petscii?
+  * leading edge is a color
+  * leaves random tiles in its wake
+
+* fire spreads in direction of wind
+
+
+
 
 * water deposited
   * on burnt-out cell:
@@ -17,13 +19,6 @@ state transitions:
     * if cell extinguished, then cell is soaked
       * cell is painted as soaked
 
-X fire spreads:
-  X to burnt-out cell: no effect
-  X to soaked cell: soak lifetime decremented
-  X to unburning cell: chance of ignition
-
-* explosions!!
-* fire spreads in direction of wind
 * rescue game!  fight the fire and drop markers to summon rescue helicopters.  
 
 * flak guns
