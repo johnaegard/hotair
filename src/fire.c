@@ -50,17 +50,17 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
 
-//FIRE MEMORY
-// #define BANK_NUM (*(unsigned char *)0x00)
-// #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
-// #define WATER_DATA_ADDRESS 0xB000 
-// char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
-// char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+// FIRE MEMORY
+#define BANK_NUM (*(unsigned char *)0x00)
+#define FIRE_DATA_ADDRESS 0xA000   // banked ram window
+#define WATER_DATA_ADDRESS 0xB000 
+char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
+char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 
-static char fire_data_array[64][64];
-static char water_data_array[64][64];
-char (*fire_data)[64] = fire_data_array;
-char (*water_data)[64] = water_data_array;
+// static char fire_data_array[64][64];
+// static char water_data_array[64][64];
+// char (*fire_data)[64] = fire_data_array;
+// char (*water_data)[64] = water_data_array;
 
 // WIND
 #define WIND_CHANGE_CHANCE 750
@@ -69,9 +69,6 @@ char (*water_data)[64] = water_data_array;
 #define WIND_GAUGE_Y_PX 440
 
 // SPRITE INDICES
-// these are base 0 from 1FC08, 
-//leaving room at 1FC00 for 
-// the mouse cursor sprite
 #define SPRITE_DEF_SIZE_BYTES 8
 #define NEEDLE_SPRITE_FRAME_BYTES 512
 #define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
@@ -82,6 +79,7 @@ typedef struct {
   unsigned long frame_addr;
 } SpriteFrame;
 
+SpriteFrame* sprite_frame;
 unsigned char joy;
 unsigned long game_frame = 0;
 clock_t start_time;
@@ -95,18 +93,21 @@ unsigned int vera_tilemap_addr_offsets[64][64];
 signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
 signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
 signed char dieroll;
-unsigned char spread_x, spread_y, keycode;
+signed char spread_x, spread_y, keycode;
 unsigned char file_error_num = 0;
 unsigned int die_roll;  /// ugh
 signed char wind_direction = 12;
 signed char needle_sprite_frame;
-SpriteFrame* sprite_frame;
 
 void setup_random(void) {
   // call entropy_get to seed the random number generator
   asm("jsr $FECF");
   asm("STA %v", areg);  // Added missing '&' for address reference
   srand(areg);
+}
+void setup_mallocs(void) {
+  sprite_frame = malloc(sizeof(SpriteFrame));
+  printf("sprite_frame: $%p\n\n", sprite_frame);
 }
 
 // VERA
@@ -476,11 +477,12 @@ void main(void) {
 
   bool run = true;
 
-  setup_random();
-
   asm("lda #2");
   asm("jsr $FF62");
   videomode(3);
+
+  setup_random();
+  setup_mallocs();
 
   asm("sec");
   asm("jsr $FF5F");
