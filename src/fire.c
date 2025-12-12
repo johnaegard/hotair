@@ -6,35 +6,33 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-vi MAP0_BASE_ADDR
 #include "wait.h"
 #include "vera.h"
 
+#define SKIP_2_BYTE_HEADER 0
+#define USE_2_BYTE_HEADER 1
+#define NO_2_BYTE_HEADER 2
+
+// VERA LOAD ADDRESSES
 #define MAP0_BASE_ADDR 0x0000
 #define MAP1_BASE_ADDR 0x2000
+#define NEEDLE_SPRITE_BASE_ADDR 0x6000
+#define CIRCLE_SPRITE_BASE_ADDR 0x6E00
 #define CHARSET_BASE_ADDR 0x1F000
+#define SPRITE_ATTR_BASE_ADDR 0x1FC08
 
-#define NEEDLE_SPRITE_BASE_ADDR 0x16800
-#define CIRCLE_SPRITE_BASE_ADDR 0x17600
 #define MONOPLANE_SPRITE_BASE_ADDR 0x17800
 #define FLAK_SPRITE_BASE_ADDR 0x17B80
 #define CROSSHAIR_SPRITE_BASE_ADDR 0x17F00
 #define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
 #define FLAK_SHELL_SPRITE_BASE_ADDR 0x18F00
-#define SPRITE_ATTR_BASE_ADDR 0x1FC08
 #define PALETTE_BASE_ADDR 0x1FA00
 
 #define HI_RES true
 
 #define MAP_WIDTH_TILES 64
 
-unsigned char joy;
-unsigned long game_frame = 0;
-clock_t start_time;
-clock_t end_time;
-unsigned long runtime_seconds;
-unsigned char areg;
-
+// FIRE APPEARANCE
 #define FIRE_NUM_BG_COLORS 4
 #define FIRE_NUM_FG_COLORS 8
 #define FIRE_COLOR_COMBINATIONS (FIRE_NUM_FG_COLORS * FIRE_NUM_BG_COLORS)
@@ -42,12 +40,49 @@ unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x20, 0x70, 0x80, 0xA0};
 unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x02, 0x03,0x07, 0x08, 0x0A, 0x0D, 0x0F};
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
+// fire dynamics
+#define FIRE_SAMPLES_PER_FRAME 72
+#define FIRE_DURATION 50
+#define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
+#define FIRE_SEED_CHANCE 100
+#define FIRE_SPREAD_CHANCE 16000
+#define SOAKED_SEED_CHANCE 500
+#define SOAK_DURATION 10
+#define BURNT_OUT 255
+
+//FIRE MEMORY
 #define BANK_NUM (*(unsigned char *)0x00)
 #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
 #define WATER_DATA_ADDRESS 0xB000 
 char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 
+// WIND
+#define WIND_CHANGE_CHANCE 3000
+#define WIND_DIRECTIONS 24
+#define WIND_GAUGE_X_PX 600
+#define WIND_GAUGE_Y_PX 440
+
+// SPRITE INDICES
+// these are base 0 from 1FC08, 
+//leaving room at 1FC00 for 
+// the mouse cursor sprite
+#define SPRITE_DEF_SIZE_BYTES 8
+#define NEEDLE_SPRITE_FRAME_BYTES 512
+#define WIND_GAUGE_NEEDLE_SPRITE_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
+#define WIND_GAUGE_CIRCLE_SPRITE_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
+
+typedef struct {
+  unsigned char flips;
+  unsigned long frame_addr;
+} SpriteFrame;
+
+unsigned char joy;
+unsigned long game_frame = 0;
+clock_t start_time;
+clock_t end_time;
+unsigned long runtime_seconds;
+unsigned char areg;
 unsigned char rand_x, rand_y;
 unsigned long addr;
 unsigned int sample;
@@ -55,7 +90,12 @@ unsigned int vera_tilemap_addr_offsets[64][64];
 signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
 signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
 signed char dieroll;
-unsigned char spread_x, spread_y;
+unsigned char spread_x, spread_y, keycode;
+unsigned char file_error_num = 0;
+unsigned int die_roll;  /// ugh
+signed char wind_direction = 0;
+signed char needle_sprite_frame;
+SpriteFrame* sprite_frame;
 
 void setup_random(void) {
   // call entropy_get to seed the random number generator
@@ -64,12 +104,8 @@ void setup_random(void) {
   srand(areg);
 }
 
-unsigned char error_num = 0;
+// VERA
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
-
-#define SKIP_2_BYTE_HEADER 0
-#define USE_2_BYTE_HEADER 1
-#define NO_2_BYTE_HEADER 2
 
   unsigned char m = 2;
 
@@ -106,29 +142,26 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
 
-  error_num = 0;
+  file_error_num = 0;
   __asm__("bcc noerror");
   __asm__("lda #1");
-  __asm__("sta %v", error_num);
+  __asm__("sta %v", file_error_num);
   __asm__("noerror:");
 
-  if (error_num) {
-    printf("%1c%1c err#%02u%1c\n",28,0x71,error_num,5);
+  if (file_error_num) {
+    printf("%1c%1c err#%02u%1c\n",28,0x71,file_error_num,5);
     exit(1);
   }
   else {
     printf("%1c%1c%1c\n", 30, 0x73, 5);
   }
 }
-
-unsigned char keycode;
-
 void vera_loads(void) {
   load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
   // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  // load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  // load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
   // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   // load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   // load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
@@ -163,33 +196,28 @@ void vera_setup(void) {
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 }
-void outro(void) {
-  unsigned long fps = 0;
 
-  end_time = clock();
-  runtime_seconds = 1+ ((end_time - start_time) / CLOCKS_PER_SEC);
-  fps = game_frame / runtime_seconds;
-
-  // Reset VERA to text mode
-  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
- 
-  // Reset layer 0 to default text mode configuration
-  VERA.layer1.hscroll = 0;
-  VERA.layer1.vscroll = 0;
-  VERA.layer1.config = 0b01100000;  // 128x64
-  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
-
-  //petsci lower / gfx 80x30
-  asm("lda #2");
-  asm("jsr $FF62");
-  videomode(3);
-
-  printf("end of game");
-
-  printf("\n\nframes: %lu", game_frame);
-  printf("\nruntime: %lu seconds", runtime_seconds);
-  printf("\nfps: %lu\n\n", fps);
+// SPRITES
+void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
+  if (frame >= 19) {
+    sf->flips = 0b01;
+    sf->frame_addr = base_addr + (frame_size_bytes * (24 - frame));
+  }
+  else if (frame >= 13) {
+    sf->flips = 0b11;
+    sf->frame_addr = base_addr + (frame_size_bytes * (frame - 12));
+  }
+  else if (frame >= 7) {
+    sf->flips = 0b10;
+    sf->frame_addr = base_addr + (frame_size_bytes * (12 - frame));
+  }
+  else {
+    sf->flips = 0b00;
+    sf->frame_addr = base_addr + frame_size_bytes * frame;
+  }
 }
+
+// FIRE
 void fire_color_setup(void) {
   unsigned char fg_index, bg_index, lookup_index;
   lookup_index = 0;
@@ -200,19 +228,6 @@ void fire_color_setup(void) {
     }
   }
 }
-
-// fire dynamics
-#define FIRE_SAMPLES_PER_FRAME 72
-#define FIRE_DURATION 50
-#define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
-#define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 16000
-#define SOAKED_SEED_CHANCE 500
-#define SOAK_DURATION 10
-#define BURNT_OUT 255
-
-unsigned int die_roll;
-
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
@@ -313,8 +328,6 @@ void fire_setup(void) {
     }
   }
 }
-
-unsigned char firebyte;
 void burn() {
 
   VERA.address_hi = 0 | VERA_INC_1;
@@ -323,12 +336,10 @@ void burn() {
     rand_x = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
     rand_y = rand() & 0x3F;  // 0-63 (mask with 0011 1111)
 
-    firebyte = fire_data[rand_y][rand_x];
-
     // 
     // YOU DO NOT BURN
     //
-    if (firebyte > FIRE_DURATION) {
+    if (fire_data[rand_y][rand_x] > FIRE_DURATION) {
       continue;
     }
 
@@ -340,7 +351,7 @@ void burn() {
     // 
     // YOU BURN OUT
     //
-    if (firebyte == 0) {
+    if (fire_data[rand_y][rand_x] == 0) {
       fire_data[rand_y][rand_x] = BURNT_OUT;
       if ((rand() % 3) == 0) {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
@@ -379,6 +390,84 @@ void burn() {
     }
   }
 }
+
+// WIND
+void wind_setup(void) {
+  wind_direction = rand() % WIND_DIRECTIONS;
+}
+void wind_update(void) {
+
+  // wind_direction = (wind_direction +1) % WIND_DIRECTIONS;
+  if (rand() < WIND_CHANGE_CHANCE) {
+    wind_direction = wind_direction + ((rand() % 3) - 1);
+  }
+  if (wind_direction < 0) {
+    wind_direction = WIND_DIRECTIONS + wind_direction;
+  }
+  wind_direction = wind_direction % WIND_DIRECTIONS;
+}
+void wind_sprites_setup(void) {
+
+  // WIND GAUGE CIRCLE
+  VERA.address = WIND_GAUGE_CIRCLE_SPRITE_ADDR;
+  VERA.address_hi = WIND_GAUGE_CIRCLE_SPRITE_ADDR >> 16;
+  VERA.address_hi |= VERA_INC_1;
+
+  VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BASE_ADDR >> 13);
+  VERA.data0 = WIND_GAUGE_X_PX;
+  VERA.data0 = WIND_GAUGE_X_PX >> 8;
+  VERA.data0 = WIND_GAUGE_Y_PX;
+  VERA.data0 = WIND_GAUGE_Y_PX >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = 0b10100000; // 32x32 pixel image
+}
+void wind_sprite_update(void) {
+
+  VERA.address = WIND_GAUGE_NEEDLE_SPRITE_ADDR;
+  VERA.address_hi = WIND_GAUGE_NEEDLE_SPRITE_ADDR >> 16;
+  VERA.address_hi |= VERA_INC_1;
+
+  needle_sprite_frame = wind_direction;
+  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, needle_sprite_frame);
+  VERA.data0 = sprite_frame->frame_addr >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
+  VERA.data0 = WIND_GAUGE_X_PX;
+  VERA.data0 = WIND_GAUGE_X_PX >> 8;
+  VERA.data0 = WIND_GAUGE_Y_PX;
+  VERA.data0 = WIND_GAUGE_Y_PX >> 8;
+  VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = 0b10100000; // 32x32 pixel image
+}
+
+// EXECUTION
+void outro(void) {
+  unsigned long fps = 0;
+
+  end_time = clock();
+  runtime_seconds = 1+ ((end_time - start_time) / CLOCKS_PER_SEC);
+  fps = game_frame / runtime_seconds;
+
+  // Reset VERA to text mode
+  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
+ 
+  // Reset layer 0 to default text mode configuration
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+  VERA.layer1.config = 0b01100000;  // 128x64
+  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
+
+  //petsci lower / gfx 80x30
+  asm("lda #2");
+  asm("jsr $FF62");
+  videomode(3);
+
+  printf("end of game");
+
+  printf("\n\nframes: %lu", game_frame);
+  printf("\nruntime: %lu seconds", runtime_seconds);
+  printf("\nfps: %lu\n\n", fps);
+}
 void main(void) {
 
   bool run = true;
@@ -401,7 +490,9 @@ void main(void) {
   printf("\nrandomizing fire");
   fire_color_setup();
   fire_setup();
+  wind_setup();
   vera_setup();
+  wind_sprites_setup();
 
   //mousey
   asm("ldx #80");
@@ -420,6 +511,8 @@ void main(void) {
     }
     game_frame++;
     burn();
+    wind_update();
+    wind_sprite_update();
     wait(); 
   }
 
