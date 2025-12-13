@@ -50,12 +50,17 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
 
-// FIRE MEMORY
+// BANKED RAM
 #define BANK_NUM (*(unsigned char *)0x00)
+#define FIRE_AND_WATER_BANK 1
 #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
 #define WATER_DATA_ADDRESS 0xB000  // top half of banked ram window
 char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+
+#define BOMB_BANK 2
+#define BOMB_DATA_ADDRESS 0xA000  // banked ram window
+char (*bomb_data)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=2
 
 // WIND
 #define WIND_CHANGE_CHANCE 750
@@ -233,6 +238,8 @@ void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
   unsigned char neighbor_count,pass;
+
+  BANK_NUM = FIRE_AND_WATER_BANK;
   
   // Precompute all address offsets
   for (r = 0; r < 64; r++) {
@@ -330,7 +337,7 @@ void fire_setup(void) {
   }
 }
 void burn() {
-
+  BANK_NUM = FIRE_AND_WATER_BANK;
   VERA.address_hi = 0 | VERA_INC_1;
 
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
@@ -440,6 +447,34 @@ void wind_sprite_update(void) {
   VERA.data0 = 0b10100000; // 32x32 pixel image
 }
 
+//BOMB
+#define NUM_BOMBS 10
+#define BOMB_CHAR 0x56  // 'O' character
+#define BOMB_COLOR 0x03
+
+void setup_bombs(void) {
+  unsigned char bomb_num;
+  unsigned char bomb_x, bomb_y;
+  unsigned long addr;
+
+  for (bomb_num = 0; bomb_num < NUM_BOMBS; bomb_num++) {
+    BANK_NUM = FIRE_AND_WATER_BANK;
+    do {
+      bomb_x = rand() & 0x3F;  // 0-63
+      bomb_y = rand() & 0x3F;  // 0-63
+    } while (fire_data[bomb_y][bomb_x] < NO_FIRE_MAGIC_VALUE || water_data[bomb_y][bomb_x] > 0);
+
+    BANK_NUM = BOMB_BANK;
+    bomb_data[bomb_y][bomb_x] = 1;
+
+    addr = vera_tilemap_addr_offsets[bomb_y][bomb_x] -1;
+    VERA.address_hi = 0 | VERA_INC_1;
+    VERA.address = addr;
+    VERA.data0 = BOMB_CHAR;
+    VERA.data0 = BOMB_COLOR;
+  }
+}
+
 // EXECUTION
 void outro(void) {
   unsigned long fps = 0;
@@ -491,6 +526,7 @@ void main(void) {
   printf("\nrandomizing fire");
   fire_color_setup();
   fire_setup();
+  setup_bombs();
   wind_setup();
   vera_setup();
   wind_sprites_setup();
