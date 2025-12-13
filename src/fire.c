@@ -460,7 +460,7 @@ void wind_sprite_update(void) {
   VERA.data0 = 0b10100000; // 32x32 pixel image
 }
 
-void setup_bombs(void) {
+void bombs_setup(void) {
   unsigned char b;
   unsigned char bomb_x, bomb_y;
   unsigned long addr;
@@ -483,8 +483,7 @@ void setup_bombs(void) {
     VERA.data0 = bomb_colors[0];
   }
 }
-
-void animate_bombs(void) {
+void bombs_animmate(void) {
   unsigned char b = (game_frame % NUM_BOMBS);  
   VERA.address_hi = 0 | VERA_INC_1;
   VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
@@ -543,7 +542,7 @@ void main(void) {
   printf("\nrandomizing fire");
   fire_color_setup();
   fire_setup();
-  setup_bombs();
+  bombs_setup();
   wind_setup();
   vera_setup();
   wind_sprites_setup();
@@ -567,7 +566,7 @@ void main(void) {
     burn();
     wind_update();
     wind_sprite_update();
-    animate_bombs();
+    bombs_animmate();
     wait(); 
   }
 
