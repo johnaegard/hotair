@@ -42,10 +42,10 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 // fire dynamics
 #define FIRE_SAMPLES_PER_FRAME 72
-#define FIRE_DURATION 6
+#define FIRE_DURATION 18
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 32000
+#define FIRE_SPREAD_CHANCE 10000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -55,12 +55,12 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define FIRE_AND_WATER_BANK 1
 #define FIRE_DATA_ADDRESS 0xA000   // banked ram window
 #define WATER_DATA_ADDRESS 0xB000  // top half of banked ram window
-char (*fire_data)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
-char (*water_data)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+char (*fire_index)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
+char (*water_index)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 
 #define BOMB_BANK 2
 #define BOMB_DATA_ADDRESS 0xA000  // banked ram window
-char (*bomb_data)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=2
+char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=2
 
 // WIND
 #define WIND_CHANGE_CHANCE 750
@@ -74,12 +74,25 @@ char (*bomb_data)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=2
 #define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
 #define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
 
+//BOMBS
+#define NUM_BOMBS 10
+#define NUM_BAR_FRAMES 4
+unsigned char bomb_colors[NUM_BAR_FRAMES] = {0x00, 0x01, 0x00, 0x03};
+unsigned char bomb_chars[NUM_BAR_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
+
 typedef struct {
   unsigned char flips;
   unsigned long frame_addr;
 } SpriteFrame;
 
+typedef struct {
+  unsigned char frame;
+  unsigned char x;
+  unsigned char y;
+} Bomb;
+
 SpriteFrame* sprite_frame;
+Bomb bomb_pool[NUM_BOMBS];
 unsigned char joy;
 unsigned long game_frame = 0;
 clock_t start_time;
@@ -253,37 +266,37 @@ void fire_setup(void) {
     for (c = 0; c < 64; c++) {
       die_roll = rand();
       if (die_roll < FIRE_SEED_CHANCE) {
-        fire_data[r][c] = FIRE_DURATION;
-        water_data[r][c] = 0;
+        fire_index[r][c] = FIRE_DURATION;
+        water_index[r][c] = 0;
       } else if (die_roll < SOAKED_SEED_CHANCE) {
-        water_data[r][c] = SOAK_DURATION;
+        water_index[r][c] = SOAK_DURATION;
       } else {
-        fire_data[r][c] = NO_FIRE_MAGIC_VALUE;
-        water_data[r][c] = 0;
+        fire_index[r][c] = NO_FIRE_MAGIC_VALUE;
+        water_index[r][c] = 0;
       }
     }
   }
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (water_data[r][c] == 0) { 
+        if (water_index[r][c] == 0) { 
           neighbor_count = 0;
           
           // Count neighbors (8-connected)
-          if (water_data[r-1][c-1] > 0) neighbor_count++;
-          if (water_data[r-1][c]   > 0) neighbor_count++;
-          if (water_data[r-1][c+1] > 0) neighbor_count++;
-          if (water_data[r][c-1]   > 0) neighbor_count++;
-          if (water_data[r][c+1]   > 0) neighbor_count++;
-          if (water_data[r+1][c-1] > 0) neighbor_count++;
-          if (water_data[r+1][c]   > 0) neighbor_count++;
-          if (water_data[r+1][c+1]  > 0) neighbor_count++;
+          if (water_index[r-1][c-1] > 0) neighbor_count++;
+          if (water_index[r-1][c]   > 0) neighbor_count++;
+          if (water_index[r-1][c+1] > 0) neighbor_count++;
+          if (water_index[r][c-1]   > 0) neighbor_count++;
+          if (water_index[r][c+1]   > 0) neighbor_count++;
+          if (water_index[r+1][c-1] > 0) neighbor_count++;
+          if (water_index[r+1][c]   > 0) neighbor_count++;
+          if (water_index[r+1][c+1]  > 0) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
             unsigned int threshold = neighbor_count * 4800;
             if (rand() < threshold) {
-              water_data[r][c] = SOAK_DURATION;
+              water_index[r][c] = SOAK_DURATION;
             }
           }
         }
@@ -294,24 +307,24 @@ void fire_setup(void) {
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_data[r][c] == NO_FIRE_MAGIC_VALUE && water_data[r][c] == 0) { 
+        if (fire_index[r][c] == NO_FIRE_MAGIC_VALUE && water_index[r][c] == 0) { 
           neighbor_count = 0;
           
           // Count neighbors (8-connected)
-          if (fire_data[r-1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r-1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r-1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r][c-1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r][c+1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_data[r+1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r-1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r-1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r-1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r][c-1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r][c+1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r+1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r+1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r+1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
             unsigned int threshold = neighbor_count * 4500;
             if (rand() < threshold) {
-              fire_data[r][c] = FIRE_DURATION;
+              fire_index[r][c] = FIRE_DURATION;
             }
           }
         }
@@ -323,12 +336,12 @@ void fire_setup(void) {
 
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      if (fire_data[r][c] < NO_FIRE_MAGIC_VALUE) {
+      if (fire_index[r][c] < NO_FIRE_MAGIC_VALUE) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
       }
-      if (water_data[r][c] > 0) {
+      if (water_index[r][c] > 0) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = 0x60;
@@ -347,20 +360,20 @@ void burn() {
     // 
     // YOU DO NOT BURN
     //
-    if (fire_data[rand_y][rand_x] > FIRE_DURATION) {
+    if (fire_index[rand_y][rand_x] > FIRE_DURATION) {
       continue;
     }
 
     // 
     // YOU BURN 
     //
-    fire_data[rand_y][rand_x]--;
+    fire_index[rand_y][rand_x]--;
 
     // 
     // YOU BURN OUT
     //
-    if (fire_data[rand_y][rand_x] == 0) {
-      fire_data[rand_y][rand_x] = BURNT_OUT;
+    if (fire_index[rand_y][rand_x] == 0) {
+      fire_index[rand_y][rand_x] = BURNT_OUT;
       if ((rand() % 3) == 0) {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
         VERA.data0 = 0x66;
@@ -386,11 +399,11 @@ void burn() {
       spread_x = rand_x + fire_xpread[dieroll];
       spread_y = rand_y + fire_ypread[dieroll];
       if (spread_x >= 0 && spread_x < 64 && spread_y>=0 && spread_y < 64) {
-        if (water_data[spread_y][spread_x] > 0) {
-          water_data[spread_y][spread_x]--;
+        if (water_index[spread_y][spread_x] > 0) {
+          water_index[spread_y][spread_x]--;
         }
-        else if (fire_data[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
-          fire_data[spread_y][spread_x] = FIRE_DURATION;
+        else if (fire_index[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
+          fire_index[spread_y][spread_x] = FIRE_DURATION;
           VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
           VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
         }
@@ -447,33 +460,37 @@ void wind_sprite_update(void) {
   VERA.data0 = 0b10100000; // 32x32 pixel image
 }
 
-//BOMB
-#define NUM_BOMBS 10
-#define BOMB_CHAR 0x56  // 'O' character
-#define BOMB_COLOR 0x03
-
 void setup_bombs(void) {
-  unsigned char bomb_num;
+  unsigned char b;
   unsigned char bomb_x, bomb_y;
   unsigned long addr;
 
-  for (bomb_num = 0; bomb_num < NUM_BOMBS; bomb_num++) {
+  VERA.address_hi = 0 | VERA_INC_1;
+  for (b = 0; b < NUM_BOMBS; b++) {
     BANK_NUM = FIRE_AND_WATER_BANK;
     do {
       bomb_x = rand() & 0x3F;  // 0-63
       bomb_y = rand() & 0x3F;  // 0-63
-    } while (fire_data[bomb_y][bomb_x] < NO_FIRE_MAGIC_VALUE || water_data[bomb_y][bomb_x] > 0);
+    } while (fire_index[bomb_y][bomb_x] < NO_FIRE_MAGIC_VALUE || water_index[bomb_y][bomb_x] > 0);
 
     BANK_NUM = BOMB_BANK;
-    bomb_data[bomb_y][bomb_x] = 1;
+    bomb_index[bomb_y][bomb_x] = b;
+    bomb_pool[b].x = bomb_x;
+    bomb_pool[b].y = bomb_y;
 
-    addr = vera_tilemap_addr_offsets[bomb_y][bomb_x] -1;
-    VERA.address_hi = 0 | VERA_INC_1;
-    VERA.address = addr;
-    VERA.data0 = BOMB_CHAR;
-    VERA.data0 = BOMB_COLOR;
+    VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x] -1;
+    VERA.data0 = bomb_chars[0];
+    VERA.data0 = bomb_colors[0];
   }
 }
+
+void animate_bombs(void) {
+  unsigned char b = (game_frame % NUM_BOMBS);  
+  VERA.address_hi = 0 | VERA_INC_1;
+  VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
+  VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_BAR_FRAMES];
+  VERA.data0 = bomb_colors[bomb_pool[b].frame++ % NUM_BAR_FRAMES];  
+} 
 
 // EXECUTION
 void outro(void) {
@@ -550,6 +567,7 @@ void main(void) {
     burn();
     wind_update();
     wind_sprite_update();
+    animate_bombs();
     wait(); 
   }
 
