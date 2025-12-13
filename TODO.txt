@@ -1,14 +1,12 @@
-state transitions:
-
 * explosions!!
   * petscii?
   * leading edge is a color
+  * chance of fire in every cell touched
+  * reduce fire samples during explosion
   * leaves random tiles in its wake
+  * random size
 
 * fire spreads in direction of wind
-
-
-
 
 * water deposited
   * on burnt-out cell:
@@ -20,6 +18,21 @@ state transitions:
       * cell is painted as soaked
 
 * rescue game!  fight the fire and drop markers to summon rescue helicopters.  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 * flak guns
   * rotate and don't just teleport to the new rotation.
