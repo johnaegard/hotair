@@ -45,7 +45,7 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define FIRE_DURATION 18
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 10000
+#define FIRE_SPREAD_CHANCE 5000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -76,9 +76,9 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 
 //BOMBS
 #define NUM_BOMBS 10
-#define NUM_BAR_FRAMES 4
-unsigned char bomb_colors[NUM_BAR_FRAMES] = {0x00, 0x01, 0x00, 0x03};
-unsigned char bomb_chars[NUM_BAR_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
+#define NUM_UXBOMB_FRAMES 4
+unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x00, 0x01, 0x00, 0x03};
+unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
 
 typedef struct {
   unsigned char flips;
@@ -461,9 +461,7 @@ void wind_sprite_update(void) {
 }
 
 void bombs_setup(void) {
-  unsigned char b;
-  unsigned char bomb_x, bomb_y;
-  unsigned long addr;
+  unsigned char b,bomb_x, bomb_y;
 
   VERA.address_hi = 0 | VERA_INC_1;
   for (b = 0; b < NUM_BOMBS; b++) {
@@ -483,12 +481,12 @@ void bombs_setup(void) {
     VERA.data0 = bomb_colors[0];
   }
 }
-void bombs_animmate(void) {
+void bombs_animate(void) {
   unsigned char b = (game_frame % NUM_BOMBS);  
   VERA.address_hi = 0 | VERA_INC_1;
   VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
-  VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_BAR_FRAMES];
-  VERA.data0 = bomb_colors[bomb_pool[b].frame++ % NUM_BAR_FRAMES];  
+  VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
+  VERA.data0 = bomb_colors[bomb_pool[b].frame++ % NUM_UXBOMB_FRAMES];  
 } 
 
 // EXECUTION
@@ -566,7 +564,7 @@ void main(void) {
     burn();
     wind_update();
     wind_sprite_update();
-    bombs_animmate();
+    bombs_animate();
     wait(); 
   }
 
