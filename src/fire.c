@@ -45,7 +45,7 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define FIRE_DURATION 18
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 5000
+#define FIRE_SPREAD_CHANCE 12000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -77,6 +77,7 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 //BOMBS
 #define NUM_BOMBS 10
 #define NUM_UXBOMB_FRAMES 4
+#define BOMB_EXPLOSION_CHANCE 16000
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x00, 0x01, 0x00, 0x03};
 unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
 
@@ -89,6 +90,8 @@ typedef struct {
   unsigned char frame;
   unsigned char x;
   unsigned char y;
+  bool exploding;
+  bool unexploded;
 } Bomb;
 
 SpriteFrame* sprite_frame;
@@ -350,6 +353,8 @@ void fire_setup(void) {
   }
 }
 void burn() {
+  unsigned char bomb_id;
+
   BANK_NUM = FIRE_AND_WATER_BANK;
   VERA.address_hi = 0 | VERA_INC_1;
 
@@ -368,6 +373,21 @@ void burn() {
     // YOU BURN 
     //
     fire_index[rand_y][rand_x]--;
+
+    //
+    // YOU TRIGGER A BOMB
+    //
+    BANK_NUM = BOMB_BANK;
+    bomb_id = bomb_index[rand_y][rand_x];
+    BANK_NUM = FIRE_AND_WATER_BANK;
+
+    if (bomb_id < NUM_BOMBS && bomb_pool[bomb_id].unexploded) {
+      if (rand() < BOMB_EXPLOSION_CHANCE) {
+        bomb_pool[bomb_id].exploding = true;
+        bomb_pool[bomb_id].unexploded = false;
+        bomb_pool[bomb_id].frame = 0;
+      }
+    }
 
     // 
     // YOU BURN OUT
@@ -462,6 +482,13 @@ void wind_sprite_update(void) {
 
 void bombs_setup(void) {
   unsigned char b,bomb_x, bomb_y;
+  BANK_NUM = BOMB_BANK;
+// initialize bomb index array to 255 (no bomb)
+  for (bomb_y = 0; bomb_y < 64; bomb_y++) {
+    for (bomb_x = 0; bomb_x < 64; bomb_x++) {
+      bomb_index[bomb_y][bomb_x] = 255;
+    }
+  } 
 
   VERA.address_hi = 0 | VERA_INC_1;
   for (b = 0; b < NUM_BOMBS; b++) {
@@ -475,6 +502,9 @@ void bombs_setup(void) {
     bomb_index[bomb_y][bomb_x] = b;
     bomb_pool[b].x = bomb_x;
     bomb_pool[b].y = bomb_y;
+    bomb_pool[b].frame = 0;
+    bomb_pool[b].exploding = false;
+    bomb_pool[b].unexploded = true;
 
     VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x] -1;
     VERA.data0 = bomb_chars[0];
@@ -483,10 +513,30 @@ void bombs_setup(void) {
 }
 void bombs_animate(void) {
   unsigned char b = (game_frame % NUM_BOMBS);  
+  unsigned char color;
   VERA.address_hi = 0 | VERA_INC_1;
   VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
-  VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
-  VERA.data0 = bomb_colors[bomb_pool[b].frame++ % NUM_UXBOMB_FRAMES];  
+  
+  if (bomb_pool[b].exploding) {
+    VERA.data0 = 0x2A;
+    VERA.data0 = 0x30;
+    
+    if (bomb_pool[b].frame > 8) {
+      bomb_pool[b].exploding = false;
+      VERA.data0 = 0x04;
+      VERA.data0 = 0xB0;  // Show burnt ground
+    }
+  } else if (bomb_pool[b].unexploded) {
+    VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
+    BANK_NUM = FIRE_AND_WATER_BANK;
+    if (fire_index[bomb_pool[b].y][bomb_pool[b].x] < NO_FIRE_MAGIC_VALUE) {
+      color = 0x02;
+    } else {
+      color = bomb_colors[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
+    }
+    VERA.data0 = color;
+  }
+  bomb_pool[b].frame++;
 } 
 
 // EXECUTION
