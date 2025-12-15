@@ -97,11 +97,8 @@ typedef struct {
 SpriteFrame sprite_frame_data = {0, 0};
 SpriteFrame* sprite_frame = &sprite_frame_data;
 Bomb bomb_pool[NUM_BOMBS];
-unsigned char joy;
+
 unsigned long game_frame = 0;
-clock_t start_time;
-clock_t end_time;
-unsigned long runtime_seconds;
 unsigned char areg;
 unsigned char rand_x, rand_y;
 unsigned long addr;
@@ -132,6 +129,11 @@ void mouse_setup(void) {
 }
 
 // VERA
+void uppercase_petscii_40x30(void) {
+  asm("lda #2");
+  asm("jsr $FF62");
+  videomode(3);
+}
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
 
   unsigned char m = 2;
@@ -260,6 +262,7 @@ void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
   unsigned char neighbor_count,pass;
+  unsigned int tiles_processed = 0;
 
   BANK_NUM = FIRE_AND_WATER_BANK;
   
@@ -285,6 +288,9 @@ void fire_setup(void) {
       }
     }
   }
+  
+  printf("\nseeding water:");
+
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
@@ -309,9 +315,15 @@ void fire_setup(void) {
             }
           }
         }
+        if (tiles_processed++ % 1000 == 0) {
+          printf("%1c%1c%1c", 30, 0x73, 5);
+        }
       }
     }
   }
+
+  tiles_processed = 0;
+  printf("\nseeding fire: ");
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
@@ -336,6 +348,9 @@ void fire_setup(void) {
               fire_index[r][c] = FIRE_DURATION;
             }
           }
+        }
+        if (tiles_processed++ % 1000 == 0) {
+          printf("%1c%1c%1c", 30, 0x73, 5);
         }
       }
     }
@@ -547,10 +562,10 @@ void bombs_animate(void) {
 } 
 
 // EXECUTION
-void outro(void) {
+void outro(clock_t start_time, clock_t end_time) {
   unsigned long fps = 0;
+  unsigned long runtime_seconds = 0;
 
-  end_time = clock();
   runtime_seconds = 1+ ((end_time - start_time) / CLOCKS_PER_SEC);
   fps = game_frame / runtime_seconds;
 
@@ -577,21 +592,20 @@ void outro(void) {
 void main(void) {
 
   bool run = true;
+  unsigned char joy;
+  clock_t start_time;
+  clock_t end_time;
 
-  asm("lda #2");
-  asm("jsr $FF62");
-  videomode(3);
-
+  uppercase_petscii_40x30();
   random_setup();
   vera_loads();
   joy_install(cx16_std_joy);
-  printf("\nrandomizing fire");
   fire_color_setup();
   fire_setup();
   bombs_setup();
   wind_setup();
-  vera_screen_setup();
   wind_sprites_setup();
+  vera_screen_setup();
   mouse_setup();
 
   start_time = clock();
@@ -610,6 +624,7 @@ void main(void) {
     wait(); 
   }
 
-  outro();
+  end_time = clock();   
+  outro(start_time, end_time);
 
 }
