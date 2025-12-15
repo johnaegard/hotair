@@ -292,7 +292,7 @@ void load_code_banks(void) {
 
 #pragma code-name (push, "BANKRAM01")
 
-void setup_random(void) {
+void random_setup(void) {
   // call entropy_get to seed the random number generator
   asm("jsr $FECF");
   asm("STA %v", areg);
@@ -335,7 +335,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // // Second param is the 16 bit address 
   cbm_k_load(m, base_addr);
 }
-void vera_setup(void) {
+void vera_screen_setup(void) {
 
   // petsci upper / gfx
 
@@ -734,7 +734,7 @@ void main(void) {
   ship_y_fpx = ship_y_fpx << 16;
 
   load_code_banks();
-  setup_random();
+  random_setup();
   init_fire_cache(30, 96, 50);
   small_fire(50);
   small_fire(50);
@@ -742,7 +742,7 @@ void main(void) {
   small_fire(50);
   small_fire(50);
   small_fire(50);
-  vera_setup();
+  vera_screen_setup();
   joy_install(cx16_std_joy);
   do_mallocs();
   

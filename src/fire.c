@@ -94,7 +94,8 @@ typedef struct {
   bool unexploded;
 } Bomb;
 
-SpriteFrame* sprite_frame;
+SpriteFrame sprite_frame_data = {0, 0};
+SpriteFrame* sprite_frame = &sprite_frame_data;
 Bomb bomb_pool[NUM_BOMBS];
 unsigned char joy;
 unsigned long game_frame = 0;
@@ -115,15 +116,19 @@ unsigned int die_roll;  /// ugh
 signed char wind_direction = 12;
 signed char needle_sprite_frame;
 
-void setup_random(void) {
+void random_setup(void) {
   // call entropy_get to seed the random number generator
   asm("jsr $FECF");
   asm("STA %v", areg);  // Added missing '&' for address reference
   srand(areg);
 }
-void setup_mallocs(void) {
-  sprite_frame = malloc(sizeof(SpriteFrame));
-  printf("sprite_frame: $%p\n\n", sprite_frame);
+void mouse_setup(void) {
+  asm("sec");
+  asm("ldx #80");
+  asm("ldy #60");
+  asm("lda #1");
+  asm("jsr $FF68");   // Call mouse_config Kernal Function
+  wait();             // Wait a cycle for the mouse to fully activate
 }
 
 // VERA
@@ -179,6 +184,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   }
 }
 void vera_loads(void) {
+  printf("loading vera\n");
   load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
@@ -191,7 +197,7 @@ void vera_loads(void) {
   // load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   // load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
 }
-void vera_setup(void) {
+void vera_screen_setup(void) {
 
   // petsci upper / gfx
   asm("lda #2");
@@ -480,10 +486,10 @@ void wind_sprite_update(void) {
   VERA.data0 = 0b10100000; // 32x32 pixel image
 }
 
+// BOMBS
 void bombs_setup(void) {
   unsigned char b,bomb_x, bomb_y;
   BANK_NUM = BOMB_BANK;
-// initialize bomb index array to 255 (no bomb)
   for (bomb_y = 0; bomb_y < 64; bomb_y++) {
     for (bomb_x = 0; bomb_x < 64; bomb_x++) {
       bomb_index[bomb_y][bomb_x] = 255;
@@ -518,13 +524,14 @@ void bombs_animate(void) {
   VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
   
   if (bomb_pool[b].exploding) {
-    VERA.data0 = 0x2A;
-    VERA.data0 = 0x30;
-    
     if (bomb_pool[b].frame > 8) {
       bomb_pool[b].exploding = false;
-      VERA.data0 = 0x04;
-      VERA.data0 = 0xB0;  // Show burnt ground
+      VERA.data0 = 0x2A;
+      VERA.data0 = 0x40;
+    }
+    else{
+      VERA.data0 = 0x2A;
+      VERA.data0 = 0x30;
     }
   } else if (bomb_pool[b].unexploded) {
     VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
@@ -575,16 +582,7 @@ void main(void) {
   asm("jsr $FF62");
   videomode(3);
 
-  setup_random();
-  setup_mallocs();
-
-  asm("sec");
-  asm("jsr $FF5F");
-  asm("lda #1");
-  asm("jsr $FF68");   // Call mouse_config Kernal Function
-  wait();             // Wait a cycle for the mouse to fully activate
-
-  printf("loading vera\n");
+  random_setup();
   vera_loads();
   joy_install(cx16_std_joy);
   printf("\nrandomizing fire");
@@ -592,15 +590,9 @@ void main(void) {
   fire_setup();
   bombs_setup();
   wind_setup();
-  vera_setup();
+  vera_screen_setup();
   wind_sprites_setup();
-
-  //mousey
-  asm("ldx #80");
-  asm("ldy #60");
-  asm("lda #1");
-  asm("jsr $FF68");   // Call mouse_config Kernal Function
-  wait();             // Wait a cycle for the mouse to fully activate
+  mouse_setup();
 
   start_time = clock();
 
