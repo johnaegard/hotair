@@ -36,8 +36,8 @@
 #define FIRE_NUM_BG_COLORS 4
 #define FIRE_NUM_FG_COLORS 8
 #define FIRE_COLOR_COMBINATIONS (FIRE_NUM_FG_COLORS * FIRE_NUM_BG_COLORS)
-unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = {0x20, 0x70, 0x80, 0xA0};
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = {0x01, 0x02, 0x03,0x07, 0x08, 0x0A, 0x0D, 0x0F};
+unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x01, 0x02, 0x03,0x07, 0x08, 0x0A, 0x0D, 0x0F };
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 
 // fire dynamics
@@ -78,8 +78,78 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 #define NUM_BOMBS 10
 #define NUM_UXBOMB_FRAMES 4
 #define BOMB_EXPLOSION_CHANCE 16000
-unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x00, 0x01, 0x00, 0x03};
-unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
+#define EXPLOSION_FRAMES 7
+#define EXPLOSION_SIZE_TILES 9
+unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = { 0x00, 0x01, 0x00, 0x03 };
+unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = { 0x00, 0x57, 0x00, 0x5A };
+unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
+  {  // FRAME 0
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0}
+  },
+  {  // FRAME 1
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,1,0,0,0},
+    {0,0,0,0,1,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0}
+  },
+  {  // FRAME 2
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,1,0,0,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,0,0,1,0,1,0,0,0},
+    {0,0,0,0,1,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0}
+  },
+  {  // FRAME 3
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,0,0,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,0,0,1,1,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0}
+  },
+  {  // FRAME 4
+    {0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,0,0,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,1,0,0,0,0,0,1,0},
+    {0,1,0,0,0,0,0,1,0},
+    {0,1,0,0,0,0,0,1,0},
+    {0,0,1,0,0,0,1,0,0},
+    {0,0,0,1,1,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0}
+  },
+  {  // FRAME 5
+    {0,0,1,1,1,1,1,0,0},
+    {0,1,0,0,0,0,0,1,0},
+    {1,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,1},
+    {0,1,0,0,0,0,0,1,0},
+    {0,0,1,1,1,1,1,0,0}
+  }
+};
 
 typedef struct {
   unsigned char flips;
@@ -94,7 +164,7 @@ typedef struct {
   bool unexploded;
 } Bomb;
 
-SpriteFrame sprite_frame_data = {0, 0};
+SpriteFrame sprite_frame_data = { 0, 0 };
 SpriteFrame* sprite_frame = &sprite_frame_data;
 Bomb bomb_pool[NUM_BOMBS];
 
@@ -104,8 +174,8 @@ unsigned char rand_x, rand_y;
 unsigned long addr;
 unsigned int sample;
 unsigned int vera_tilemap_addr_offsets[64][64];
-signed char fire_xpread[8] = {-1,0,1,-1,1,-1,0,1};
-signed char fire_ypread[8] = {1,1,1,0,0,-1,-1,-1};
+const signed char fire_xpread[8] = { -1,0,1,-1,1,-1,0,1 };
+const signed char fire_ypread[8] = { 1,1,1,0,0,-1,-1,-1 };
 signed char dieroll;
 signed char spread_x, spread_y, keycode;
 unsigned char file_error_num = 0;
@@ -178,7 +248,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   __asm__("noerror:");
 
   if (file_error_num) {
-    printf("%1c%1c err#%02u%1c\n",28,0x71,file_error_num,5);
+    printf("%1c%1c err#%02u%1c\n", 28, 0x71, file_error_num, 5);
     exit(1);
   }
   else {
@@ -211,11 +281,11 @@ void vera_screen_setup(void) {
 
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
-  VERA.layer0.config = 
-    LAYER_MAP_HEIGHT_64 | 
-    LAYER_MAP_WIDTH_64 | 
-    LAYER_T256C_OFF | 
-    LAYER_BITMAP_OFF | 
+  VERA.layer0.config =
+    LAYER_MAP_HEIGHT_64 |
+    LAYER_MAP_WIDTH_64 |
+    LAYER_T256C_OFF |
+    LAYER_BITMAP_OFF |
     LAYER_BPP_1;
   VERA.layer0.tilebase =
     (CHARSET_BASE_ADDR >> 9)  // top six bits of 17-bit address 
@@ -261,18 +331,18 @@ void fire_color_setup(void) {
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
-  unsigned char neighbor_count,pass;
+  unsigned char neighbor_count, pass;
   unsigned int tiles_processed = 0;
 
   BANK_NUM = FIRE_AND_WATER_BANK;
-  
+
   // Precompute all address offsets
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
       vera_tilemap_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
     }
   }
-  
+
   // Initial random seeding - lower probability
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
@@ -280,32 +350,34 @@ void fire_setup(void) {
       if (die_roll < FIRE_SEED_CHANCE) {
         fire_index[r][c] = FIRE_DURATION;
         water_index[r][c] = 0;
-      } else if (die_roll < SOAKED_SEED_CHANCE) {
+      }
+      else if (die_roll < SOAKED_SEED_CHANCE) {
         water_index[r][c] = SOAK_DURATION;
-      } else {
+      }
+      else {
         fire_index[r][c] = NO_FIRE_MAGIC_VALUE;
         water_index[r][c] = 0;
       }
     }
   }
-  
+
   printf("\nseeding water:");
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (water_index[r][c] == 0) { 
+        if (water_index[r][c] == 0) {
           neighbor_count = 0;
-          
+
           // Count neighbors (8-connected)
-          if (water_index[r-1][c-1] > 0) neighbor_count++;
-          if (water_index[r-1][c]   > 0) neighbor_count++;
-          if (water_index[r-1][c+1] > 0) neighbor_count++;
-          if (water_index[r][c-1]   > 0) neighbor_count++;
-          if (water_index[r][c+1]   > 0) neighbor_count++;
-          if (water_index[r+1][c-1] > 0) neighbor_count++;
-          if (water_index[r+1][c]   > 0) neighbor_count++;
-          if (water_index[r+1][c+1]  > 0) neighbor_count++;
+          if (water_index[r - 1][c - 1] > 0) neighbor_count++;
+          if (water_index[r - 1][c] > 0) neighbor_count++;
+          if (water_index[r - 1][c + 1] > 0) neighbor_count++;
+          if (water_index[r][c - 1] > 0) neighbor_count++;
+          if (water_index[r][c + 1] > 0) neighbor_count++;
+          if (water_index[r + 1][c - 1] > 0) neighbor_count++;
+          if (water_index[r + 1][c] > 0) neighbor_count++;
+          if (water_index[r + 1][c + 1] > 0) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
@@ -328,18 +400,18 @@ void fire_setup(void) {
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_index[r][c] == NO_FIRE_MAGIC_VALUE && water_index[r][c] == 0) { 
+        if (fire_index[r][c] == NO_FIRE_MAGIC_VALUE && water_index[r][c] == 0) {
           neighbor_count = 0;
-          
+
           // Count neighbors (8-connected)
-          if (fire_index[r-1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r-1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r-1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r][c-1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r][c+1]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r+1][c-1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r+1][c]   < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r+1][c+1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r - 1][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r - 1][c] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r - 1][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r + 1][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r + 1][c] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index[r + 1][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
@@ -406,7 +478,7 @@ void burn() {
       if (rand() < BOMB_EXPLOSION_CHANCE) {
         bomb_pool[bomb_id].exploding = true;
         bomb_pool[bomb_id].unexploded = false;
-        bomb_pool[bomb_id].frame = 0;
+        bomb_pool[bomb_id].frame = 1;  // not zero
       }
     }
 
@@ -416,15 +488,15 @@ void burn() {
     if (fire_index[rand_y][rand_x] == 0) {
       fire_index[rand_y][rand_x] = BURNT_OUT;
       if ((rand() % 3) == 0) {
-        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x]-1;
+        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] - 1;
         VERA.data0 = 0x66;
       }
       else {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       }
-      VERA.data0 = 0xB0;      
+      VERA.data0 = 0xB0;
       continue;
-    } 
+    }
 
     // 
     // YOU TWINKLE
@@ -439,7 +511,7 @@ void burn() {
       dieroll = rand() % 7;
       spread_x = rand_x + fire_xpread[dieroll];
       spread_y = rand_y + fire_ypread[dieroll];
-      if (spread_x >= 0 && spread_x < 64 && spread_y>=0 && spread_y < 64) {
+      if (spread_x >= 0 && spread_x < 64 && spread_y >= 0 && spread_y < 64) {
         if (water_index[spread_y][spread_x] > 0) {
           water_index[spread_y][spread_x]--;
         }
@@ -486,7 +558,7 @@ void wind_sprites_setup(void) {
 }
 void wind_sprite_update(void) {
 
-  VERA.address    = WIND_NEEDLE_SPRITE_ATTR_ADDR;
+  VERA.address = WIND_NEEDLE_SPRITE_ATTR_ADDR;
   VERA.address_hi = WIND_NEEDLE_SPRITE_ATTR_ADDR >> 16;
   VERA.address_hi |= VERA_INC_1;
 
@@ -503,13 +575,13 @@ void wind_sprite_update(void) {
 
 // BOMBS
 void bombs_setup(void) {
-  unsigned char b,bomb_x, bomb_y;
+  unsigned char b, bomb_x, bomb_y;
   BANK_NUM = BOMB_BANK;
   for (bomb_y = 0; bomb_y < 64; bomb_y++) {
     for (bomb_x = 0; bomb_x < 64; bomb_x++) {
       bomb_index[bomb_y][bomb_x] = 255;
     }
-  } 
+  }
 
   VERA.address_hi = 0 | VERA_INC_1;
   for (b = 0; b < NUM_BOMBS; b++) {
@@ -527,51 +599,67 @@ void bombs_setup(void) {
     bomb_pool[b].exploding = false;
     bomb_pool[b].unexploded = true;
 
-    VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x] -1;
+    VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x] - 1;
     VERA.data0 = bomb_chars[0];
     VERA.data0 = bomb_colors[0];
   }
 }
 void bombs_animate(void) {
-  unsigned char b = (game_frame % NUM_BOMBS);  
-  unsigned char color;
+  unsigned char b = (game_frame % NUM_BOMBS);
+  unsigned char color, prev_frame;
+  signed char dy, dx;
   VERA.address_hi = 0 | VERA_INC_1;
-  VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] -1;  
-  
+
   if (bomb_pool[b].exploding) {
-    if (bomb_pool[b].frame > 8) {
-      bomb_pool[b].exploding = false;
-      VERA.data0 = 0x2A;
-      VERA.data0 = 0x40;
+
+    for (dy = -4; dy <= 4; dy++) {
+      for (dx = -4; dx <= 4; dx++) {
+        prev_frame = (bomb_pool[b].frame - 1);
+
+        if (bomb_pool[b].frame == EXPLOSION_FRAMES) {
+          bomb_pool[b].exploding = false;
+          if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
+            VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
+            VERA.data0 = 0x9C;
+          }
+        }
+        else if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
+          VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
+          VERA.data0 = 0x9C;
+        }
+        else if (bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
+          VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
+          VERA.data0 = 0x11;
+        }
+      }
     }
-    else{
-      VERA.data0 = 0x2A;
-      VERA.data0 = 0x30;
-    }
-  } else if (bomb_pool[b].unexploded) {
+  }
+  else if (bomb_pool[b].unexploded) {
+    VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] - 1;
     VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
     BANK_NUM = FIRE_AND_WATER_BANK;
     if (fire_index[bomb_pool[b].y][bomb_pool[b].x] < NO_FIRE_MAGIC_VALUE) {
       color = 0x02;
-    } else {
+    }
+    else {
       color = bomb_colors[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
     }
     VERA.data0 = color;
   }
   bomb_pool[b].frame++;
-} 
+}
 
 // EXECUTION
 void outro(clock_t start_time, clock_t end_time) {
   unsigned long fps = 0;
   unsigned long runtime_seconds = 0;
 
-  runtime_seconds = 1+ ((end_time - start_time) / CLOCKS_PER_SEC);
+  runtime_seconds = 1 + ((end_time - start_time) / CLOCKS_PER_SEC);
   fps = game_frame / runtime_seconds;
 
   // Reset VERA to text mode
   VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
- 
+
   // Reset layer 0 to default text mode configuration
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
@@ -621,10 +709,10 @@ void main(void) {
     wind_update();
     wind_sprite_update();
     bombs_animate();
-    wait(); 
+    wait();
   }
 
-  end_time = clock();   
+  end_time = clock();
   outro(start_time, end_time);
 
 }
