@@ -328,6 +328,22 @@ void fire_color_setup(void) {
     }
   }
 }
+unsigned char fire_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  return fire_index[row][col];
+}
+void fire_index_set(unsigned char row, unsigned char col, char value) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  fire_index[row][col] = value;
+}
+unsigned char water_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  return water_index[row][col];
+}
+void water_index_set(unsigned char row, unsigned char col, char value) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  water_index[row][col] = value;
+}
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
@@ -348,15 +364,15 @@ void fire_setup(void) {
     for (c = 0; c < 64; c++) {
       die_roll = rand();
       if (die_roll < FIRE_SEED_CHANCE) {
-        fire_index[r][c] = FIRE_DURATION;
-        water_index[r][c] = 0;
+        fire_index_set(r, c, FIRE_DURATION);
+        water_index_set(r, c, 0);
       }
       else if (die_roll < SOAKED_SEED_CHANCE) {
-        water_index[r][c] = SOAK_DURATION;
+        water_index_set(r, c, SOAK_DURATION);
       }
       else {
-        fire_index[r][c] = NO_FIRE_MAGIC_VALUE;
-        water_index[r][c] = 0;
+        fire_index_set(r, c, NO_FIRE_MAGIC_VALUE);
+        water_index_set(r, c, 0);
       }
     }
   }
@@ -366,24 +382,24 @@ void fire_setup(void) {
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (water_index[r][c] == 0) {
+        if (water_index_get(r, c) == 0) {
           neighbor_count = 0;
 
           // Count neighbors (8-connected)
-          if (water_index[r - 1][c - 1] > 0) neighbor_count++;
-          if (water_index[r - 1][c] > 0) neighbor_count++;
-          if (water_index[r - 1][c + 1] > 0) neighbor_count++;
-          if (water_index[r][c - 1] > 0) neighbor_count++;
-          if (water_index[r][c + 1] > 0) neighbor_count++;
-          if (water_index[r + 1][c - 1] > 0) neighbor_count++;
-          if (water_index[r + 1][c] > 0) neighbor_count++;
-          if (water_index[r + 1][c + 1] > 0) neighbor_count++;
+          if (water_index_get(r - 1, c - 1) > 0) neighbor_count++;
+          if (water_index_get(r - 1, c) > 0) neighbor_count++;
+          if (water_index_get(r - 1, c + 1) > 0) neighbor_count++;
+          if (water_index_get(r, c - 1) > 0) neighbor_count++;
+          if (water_index_get(r, c + 1) > 0) neighbor_count++;
+          if (water_index_get(r + 1, c - 1) > 0) neighbor_count++;
+          if (water_index_get(r + 1, c) > 0) neighbor_count++;
+          if (water_index_get(r + 1, c + 1) > 0) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
             unsigned int threshold = neighbor_count * 4800;
             if (rand() < threshold) {
-              water_index[r][c] = SOAK_DURATION;
+              water_index_set(r, c, SOAK_DURATION);
             }
           }
         }
@@ -400,24 +416,24 @@ void fire_setup(void) {
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
       for (c = 1; c < 63; c++) {
-        if (fire_index[r][c] == NO_FIRE_MAGIC_VALUE && water_index[r][c] == 0) {
+        if (fire_index_get(r, c) == NO_FIRE_MAGIC_VALUE && water_index_get(r, c) == 0) {
           neighbor_count = 0;
 
           // Count neighbors (8-connected)
-          if (fire_index[r - 1][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r - 1][c] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r - 1][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r + 1][c - 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r + 1][c] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
-          if (fire_index[r + 1][c + 1] < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r - 1, c - 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r - 1, c) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r - 1, c + 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r, c - 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r, c + 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r + 1, c - 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r + 1, c) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
+          if (fire_index_get(r + 1, c + 1) < NO_FIRE_MAGIC_VALUE) neighbor_count++;
 
           // Higher probability based on neighbor count
           if (neighbor_count > 0) {
             unsigned int threshold = neighbor_count * 4500;
             if (rand() < threshold) {
-              fire_index[r][c] = FIRE_DURATION;
+              fire_index_set(r, c, FIRE_DURATION);
             }
           }
         }
@@ -432,12 +448,12 @@ void fire_setup(void) {
 
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
-      if (fire_index[r][c] < NO_FIRE_MAGIC_VALUE) {
+      if (fire_index_get(r, c) < NO_FIRE_MAGIC_VALUE) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
       }
-      if (water_index[r][c] > 0) {
+      if (water_index_get(r, c) > 0) {
         addr = vera_tilemap_addr_offsets[r][c];
         VERA.address = addr;
         VERA.data0 = 0x60;
@@ -458,14 +474,14 @@ void burn() {
     // 
     // YOU DO NOT BURN
     //
-    if (fire_index[rand_y][rand_x] > FIRE_DURATION) {
+    if (fire_index_get(rand_y, rand_x) > FIRE_DURATION) {
       continue;
     }
 
     // 
     // YOU BURN 
     //
-    fire_index[rand_y][rand_x]--;
+    fire_index_set(rand_y, rand_x, fire_index_get(rand_y, rand_x) - 1);
 
     //
     // YOU TRIGGER A BOMB
@@ -485,8 +501,8 @@ void burn() {
     // 
     // YOU BURN OUT
     //
-    if (fire_index[rand_y][rand_x] == 0) {
-      fire_index[rand_y][rand_x] = BURNT_OUT;
+    if (fire_index_get(rand_y, rand_x) == 0) {
+      fire_index_set(rand_y, rand_x, BURNT_OUT);
       if ((rand() % 3) == 0) {
         VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] - 1;
         VERA.data0 = 0x66;
@@ -512,11 +528,11 @@ void burn() {
       spread_x = rand_x + fire_xpread[dieroll];
       spread_y = rand_y + fire_ypread[dieroll];
       if (spread_x >= 0 && spread_x < 64 && spread_y >= 0 && spread_y < 64) {
-        if (water_index[spread_y][spread_x] > 0) {
-          water_index[spread_y][spread_x]--;
+        if (water_index_get(spread_y, spread_x) > 0) {
+          water_index_set(spread_y, spread_x, water_index_get(spread_y, spread_x) - 1);
         }
-        else if (fire_index[spread_y][spread_x] == NO_FIRE_MAGIC_VALUE) {
-          fire_index[spread_y][spread_x] = FIRE_DURATION;
+        else if (fire_index_get(spread_y, spread_x) == NO_FIRE_MAGIC_VALUE) {
+          fire_index_set(spread_y, spread_x, FIRE_DURATION);
           VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
           VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
         }
@@ -589,7 +605,7 @@ void bombs_setup(void) {
     do {
       bomb_x = rand() & 0x3F;  // 0-63
       bomb_y = rand() & 0x3F;  // 0-63
-    } while (fire_index[bomb_y][bomb_x] < NO_FIRE_MAGIC_VALUE || water_index[bomb_y][bomb_x] > 0);
+    } while (fire_index_get(bomb_y, bomb_x) < NO_FIRE_MAGIC_VALUE || water_index_get(bomb_y, bomb_x) > 0);
 
     BANK_NUM = BOMB_BANK;
     bomb_index[bomb_y][bomb_x] = b;
@@ -639,7 +655,7 @@ void bombs_animate(void) {
     VERA.address = vera_tilemap_addr_offsets[bomb_pool[blinkingbomb].y][bomb_pool[blinkingbomb].x] - 1;
     VERA.data0 = bomb_chars[bomb_pool[blinkingbomb].frame % NUM_UXBOMB_FRAMES];
     BANK_NUM = FIRE_AND_WATER_BANK;
-    if (fire_index[bomb_pool[blinkingbomb].y][bomb_pool[blinkingbomb].x] < NO_FIRE_MAGIC_VALUE) {
+    if (fire_index_get(bomb_pool[blinkingbomb].y, bomb_pool[blinkingbomb].x) < NO_FIRE_MAGIC_VALUE) {
     }
     else {
       VERA.data0 = bomb_colors[bomb_pool[blinkingbomb].frame % NUM_UXBOMB_FRAMES];
