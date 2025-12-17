@@ -52,6 +52,7 @@ unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
+#define BURNT_OUT_CRUMBLE_TILE_CHANCE 12000
 
 // BANKED RAM
 #define BANK_NUM (*(unsigned char *)0x00)
@@ -78,14 +79,14 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 #define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
 
 //BOMBS
-#define NUM_BOMBS 60
+#define NUM_BOMBS 16
 #define NUM_UXBOMB_FRAMES 4
 #define BOMB_BURNING_DETONATION_CHANCE 16000
 #define EXPLOSION_FRAMES 7
 #define EXPLOSION_SIZE_TILES 9
-#define EXPLOSION_IGNITE_CHANCE 00
+#define EXPLOSION_IGNITE_CHANCE 3000
 #define EXPLOSION_FLATTEN_CHANCE 16000
-#define EXPLOSION_BURNOUT_CHANCE 26000
+#define EXPLOSION_BURNOUT_CHANCE 16000
 #define EXPLOSION_DETONATE_CHANCE 30000
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = { 0x00, 0x01, 0x00, 0x03 };
 unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = { 0x00, 0x57, 0x00, 0x5A };
@@ -476,6 +477,17 @@ void fire_setup(void) {
     }
   }
 }
+void burn_out_tile(unsigned char y, unsigned char x) {
+  fire_index_set(y, x, BURNT_OUT);
+  if ((rand() < BURNT_OUT_CRUMBLE_TILE_CHANCE)) {
+    VERA.address = vera_tilemap_addr_offsets[y][x] - 1;
+    VERA.data0 = 0x66;
+  }
+  else {
+    VERA.address = vera_tilemap_addr_offsets[y][x];
+  }
+  VERA.data0 = 0xB0;
+}
 void burn() {
   unsigned char bomb_id;
 
@@ -501,26 +513,15 @@ void burn() {
     // YOU TRIGGER A BOMB
     //
     bomb_id = bomb_index_get(rand_y, rand_x);
-
-    if (bomb_id < NUM_BOMBS && bomb_pool[bomb_id].unexploded) {
-      if (rand() < BOMB_BURNING_DETONATION_CHANCE) {
-        detonate_bomb(bomb_id);
-      }
+    if (rand() < BOMB_BURNING_DETONATION_CHANCE) {
+      detonate_bomb(bomb_id);
     }
 
     // 
     // YOU BURN OUT
     //
     if (fire_index_get(rand_y, rand_x) == 0) {
-      fire_index_set(rand_y, rand_x, BURNT_OUT);
-      if ((rand() % 3) == 0) {
-        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] - 1;
-        VERA.data0 = 0x66;
-      }
-      else {
-        VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
-      }
-      VERA.data0 = 0xB0;
+      burn_out_tile(rand_y, rand_x);
       continue;
     }
 
@@ -722,9 +723,7 @@ void bombs_explode() {
           // sometimes burn out burning tiles
           else if (fire_index_get(exp_y, exp_x) < NO_FIRE_MAGIC_VALUE) {
             if (rand() < EXPLOSION_BURNOUT_CHANCE) {
-              fire_index_set(exp_y, exp_x, BURNT_OUT);
-              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
-              VERA.data0 = 0xB0;
+              burn_out_tile(exp_y, exp_x);
               continue;
             }
           }
