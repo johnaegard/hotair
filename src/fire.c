@@ -605,48 +605,47 @@ void bombs_setup(void) {
   }
 }
 void bombs_animate(void) {
-  unsigned char b = (game_frame % NUM_BOMBS);
-  unsigned char color, prev_frame;
+  unsigned char blinkingbomb = (game_frame % NUM_BOMBS);
+  unsigned char prev_frame, exploding_bomb;
   signed char dy, dx;
+
   VERA.address_hi = 0 | VERA_INC_1;
 
-  if (bomb_pool[b].exploding) {
+  for (exploding_bomb = 0; exploding_bomb < NUM_BOMBS; exploding_bomb++) {
+    if (bomb_pool[exploding_bomb].exploding) {
+      for (dy = -4; dy <= 4; dy++) {
+        for (dx = -4; dx <= 4; dx++) {
+          prev_frame = (bomb_pool[exploding_bomb].frame - 1);
 
-    for (dy = -4; dy <= 4; dy++) {
-      for (dx = -4; dx <= 4; dx++) {
-        prev_frame = (bomb_pool[b].frame - 1);
-
-        if (bomb_pool[b].frame == EXPLOSION_FRAMES) {
-          bomb_pool[b].exploding = false;
+          if (bomb_pool[exploding_bomb].frame == EXPLOSION_FRAMES) {
+            bomb_pool[exploding_bomb].exploding = false;
+          }
+          else if (bomb_explosion_animation[bomb_pool[exploding_bomb].frame][dy + 4][dx + 4]) {
+            VERA.address = vera_tilemap_addr_offsets[bomb_pool[exploding_bomb].y + dy][bomb_pool[exploding_bomb].x + dx];
+            VERA.data0 = 0x11;
+          }
           if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
-            VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
+            // bombs mutate fire and scramble tiles 
+            VERA.address = vera_tilemap_addr_offsets[bomb_pool[exploding_bomb].y + dy][bomb_pool[exploding_bomb].x + dx];
             VERA.data0 = 0x9C;
           }
         }
-        else if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
-          VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
-          VERA.data0 = 0x9C;
-        }
-        else if (bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
-          VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y+dy][bomb_pool[b].x+dx];
-          VERA.data0 = 0x11;
-        }
       }
+      bomb_pool[exploding_bomb].frame++;
     }
   }
-  else if (bomb_pool[b].unexploded) {
-    VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] - 1;
-    VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
+
+  if (bomb_pool[blinkingbomb].unexploded) {
+    VERA.address = vera_tilemap_addr_offsets[bomb_pool[blinkingbomb].y][bomb_pool[blinkingbomb].x] - 1;
+    VERA.data0 = bomb_chars[bomb_pool[blinkingbomb].frame % NUM_UXBOMB_FRAMES];
     BANK_NUM = FIRE_AND_WATER_BANK;
-    if (fire_index[bomb_pool[b].y][bomb_pool[b].x] < NO_FIRE_MAGIC_VALUE) {
-      color = 0x02;
+    if (fire_index[bomb_pool[blinkingbomb].y][bomb_pool[blinkingbomb].x] < NO_FIRE_MAGIC_VALUE) {
     }
     else {
-      color = bomb_colors[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
+      VERA.data0 = bomb_colors[bomb_pool[blinkingbomb].frame % NUM_UXBOMB_FRAMES];
     }
-    VERA.data0 = color;
+    bomb_pool[blinkingbomb].frame++;
   }
-  bomb_pool[b].frame++;
 }
 
 // EXECUTION
