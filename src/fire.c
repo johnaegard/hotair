@@ -297,6 +297,32 @@ void vera_screen_setup(void) {
   VERA.layer1.vscroll = 0;
 }
 
+// BANKED SHIT
+unsigned char bomb_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = BOMB_BANK;
+  return bomb_index[row][col];
+}
+void bomb_index_set(unsigned char row, unsigned char col, unsigned char value) {
+  BANK_NUM = BOMB_BANK;
+  bomb_index[row][col] = value;
+}
+unsigned char fire_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  return fire_index[row][col];
+}
+void fire_index_set(unsigned char row, unsigned char col, char value) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  fire_index[row][col] = value;
+}
+unsigned char water_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  return water_index[row][col];
+}
+void water_index_set(unsigned char row, unsigned char col, char value) {
+  BANK_NUM = FIRE_AND_WATER_BANK;
+  water_index[row][col] = value;
+}
+
 // SPRITES
 void sprite24_frame(SpriteFrame* sf, unsigned long base_addr, unsigned int frame_size_bytes, unsigned char frame) {
   if (frame >= 19) {
@@ -328,29 +354,11 @@ void fire_color_setup(void) {
     }
   }
 }
-unsigned char fire_index_get(unsigned char row, unsigned char col) {
-  BANK_NUM = FIRE_AND_WATER_BANK;
-  return fire_index[row][col];
-}
-void fire_index_set(unsigned char row, unsigned char col, char value) {
-  BANK_NUM = FIRE_AND_WATER_BANK;
-  fire_index[row][col] = value;
-}
-unsigned char water_index_get(unsigned char row, unsigned char col) {
-  BANK_NUM = FIRE_AND_WATER_BANK;
-  return water_index[row][col];
-}
-void water_index_set(unsigned char row, unsigned char col, char value) {
-  BANK_NUM = FIRE_AND_WATER_BANK;
-  water_index[row][col] = value;
-}
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
   unsigned char neighbor_count, pass;
   unsigned int tiles_processed = 0;
-
-  BANK_NUM = FIRE_AND_WATER_BANK;
 
   // Precompute all address offsets
   for (r = 0; r < 64; r++) {
@@ -464,7 +472,6 @@ void fire_setup(void) {
 void burn() {
   unsigned char bomb_id;
 
-  BANK_NUM = FIRE_AND_WATER_BANK;
   VERA.address_hi = 0 | VERA_INC_1;
 
   for (sample = 0; sample < FIRE_SAMPLES_PER_FRAME; sample++) {
@@ -486,9 +493,7 @@ void burn() {
     //
     // YOU TRIGGER A BOMB
     //
-    BANK_NUM = BOMB_BANK;
-    bomb_id = bomb_index[rand_y][rand_x];
-    BANK_NUM = FIRE_AND_WATER_BANK;
+    bomb_id = bomb_index_get(rand_y, rand_x);
 
     if (bomb_id < NUM_BOMBS && bomb_pool[bomb_id].unexploded) {
       if (rand() < BOMB_EXPLOSION_CHANCE) {
@@ -592,23 +597,19 @@ void wind_sprite_update(void) {
 // BOMBS
 void bombs_setup(void) {
   unsigned char b, bomb_x, bomb_y;
-  BANK_NUM = BOMB_BANK;
   for (bomb_y = 0; bomb_y < 64; bomb_y++) {
     for (bomb_x = 0; bomb_x < 64; bomb_x++) {
-      bomb_index[bomb_y][bomb_x] = 255;
+      bomb_index_set(bomb_y, bomb_x, 255);
     }
   }
-
   VERA.address_hi = 0 | VERA_INC_1;
   for (b = 0; b < NUM_BOMBS; b++) {
-    BANK_NUM = FIRE_AND_WATER_BANK;
     do {
       bomb_x = rand() & 0x3F;  // 0-63
       bomb_y = rand() & 0x3F;  // 0-63
     } while (fire_index_get(bomb_y, bomb_x) < NO_FIRE_MAGIC_VALUE || water_index_get(bomb_y, bomb_x) > 0);
 
-    BANK_NUM = BOMB_BANK;
-    bomb_index[bomb_y][bomb_x] = b;
+    bomb_index_set(bomb_y, bomb_x, b);
     bomb_pool[b].x = bomb_x;
     bomb_pool[b].y = bomb_y;
     bomb_pool[b].frame = 0;
@@ -654,7 +655,6 @@ void bombs_animate(void) {
   if (bomb_pool[blinkingbomb].unexploded) {
     VERA.address = vera_tilemap_addr_offsets[bomb_pool[blinkingbomb].y][bomb_pool[blinkingbomb].x] - 1;
     VERA.data0 = bomb_chars[bomb_pool[blinkingbomb].frame % NUM_UXBOMB_FRAMES];
-    BANK_NUM = FIRE_AND_WATER_BANK;
     if (fire_index_get(bomb_pool[blinkingbomb].y, bomb_pool[blinkingbomb].x) < NO_FIRE_MAGIC_VALUE) {
     }
     else {
