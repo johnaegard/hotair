@@ -80,6 +80,9 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 #define BOMB_EXPLOSION_CHANCE 16000
 #define EXPLOSION_FRAMES 7
 #define EXPLOSION_SIZE_TILES 9
+#define EXPLOSION_IGNITE_CHANCE 00
+#define EXPLOSION_FLATTEN_CHANCE 32000
+#define EXPLOSION_BURNOUT_CHANCE 32000
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = { 0x00, 0x01, 0x00, 0x03 };
 unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = { 0x00, 0x57, 0x00, 0x5A };
 unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
@@ -639,99 +642,148 @@ void bombs_blink(void) {
 void bombs_explode() {
   unsigned char prev_frame, b;
   signed char dy, dx;
+  signed char exp_y, exp_x;
 
   VERA.address_hi = 0 | VERA_INC_1;
 
   for (b = 0; b < NUM_BOMBS; b++) {
-    if (bomb_pool[b].exploding) {
-      for (dy = -4; dy <= 4; dy++) {
-        for (dx = -4; dx <= 4; dx++) {
-          prev_frame = (bomb_pool[b].frame - 1);
 
-          if (bomb_pool[b].frame == EXPLOSION_FRAMES) {
-            bomb_pool[b].exploding = false;
+    if (!bomb_pool[b].exploding) {
+      continue;
+    }
+    if (bomb_pool[b].frame == EXPLOSION_FRAMES) {
+      bomb_pool[b].exploding = false;
+    }
+
+    for (dy = -4; dy <= 4; dy++) {
+      exp_y = bomb_pool[b].y + dy;
+      if (exp_y < 0 || exp_y >= MAP_WIDTH_TILES) {
+        continue;
+      }
+      for (dx = -4; dx <= 4; dx++) {
+        exp_x = bomb_pool[b].x + dx;
+        if (exp_x < 0 || exp_x >= MAP_WIDTH_TILES) {
+          continue;
+        }
+        prev_frame = (bomb_pool[b].frame - 1);
+
+        // if the bomb is still exploding, paint leading edge of explosion
+        if (bomb_pool[b].exploding && bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
+          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+          VERA.data0 = 0x11;
+        }
+
+        // trailing edge of explosion
+        if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
+
+          // just repaint water tiles
+          if (water_index_get(exp_y, exp_x) > 0) {
+            VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+            VERA.data0 = 0x60;
+            continue;
           }
-          else if (bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
-            VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y + dy][bomb_pool[b].x + dx];
-            VERA.data0 = 0x11;
+
+          // sometimes flatten land tiles
+          if (water_index_get(exp_y, exp_x) == 0) {
+            if (rand() < EXPLOSION_FLATTEN_CHANCE) {
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] - 1;
+              VERA.data0 = 0x66;
+            }
           }
-          if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
-            // bombs mutate fire and scramble tiles 
-            VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y + dy][bomb_pool[b].x + dx];
-            VERA.data0 = 0x9C;
+
+          // sometimes ignite non-burning non-water cells
+          if (fire_index_get(exp_y, exp_x) == NO_FIRE_MAGIC_VALUE && water_index_get(exp_y, exp_x) == 0) {
+            if (rand() < EXPLOSION_IGNITE_CHANCE) {
+              fire_index_set(exp_y, exp_x, FIRE_DURATION);
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+              VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
+              continue;
+            }
           }
+
+          // sometimes burn out burning tiles
+          else if (fire_index_get(exp_y, exp_x) < NO_FIRE_MAGIC_VALUE) {
+            if (rand() < EXPLOSION_BURNOUT_CHANCE) {
+              fire_index_set(exp_y, exp_x, BURNT_OUT);
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+              VERA.data0 = 0xB0;
+              continue;
+            }
+          }
+          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+          VERA.data0 = 0x90;
         }
       }
-      bomb_pool[b].frame++;
     }
+    bomb_pool[b].frame++;
   }
 }
 
-// EXECUTION
-void outro(clock_t start_time, clock_t end_time) {
-  unsigned long fps = 0;
-  unsigned long runtime_seconds = 0;
+  // EXECUTION
+  void outro(clock_t start_time, clock_t end_time) {
+    unsigned long fps = 0;
+    unsigned long runtime_seconds = 0;
 
-  runtime_seconds = 1 + ((end_time - start_time) / CLOCKS_PER_SEC);
-  fps = game_frame / runtime_seconds;
+    runtime_seconds = 1 + ((end_time - start_time) / CLOCKS_PER_SEC);
+    fps = game_frame / runtime_seconds;
 
-  // Reset VERA to text mode
-  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
+    // Reset VERA to text mode
+    VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
 
-  // Reset layer 0 to default text mode configuration
-  VERA.layer1.hscroll = 0;
-  VERA.layer1.vscroll = 0;
-  VERA.layer1.config = 0b01100000;  // 128x64
-  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
+    // Reset layer 0 to default text mode configuration
+    VERA.layer1.hscroll = 0;
+    VERA.layer1.vscroll = 0;
+    VERA.layer1.config = 0b01100000;  // 128x64
+    VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
 
-  //petsci lower / gfx 80x30
-  asm("lda #2");
-  asm("jsr $FF62");
-  videomode(3);
+    //petsci lower / gfx 80x30
+    asm("lda #2");
+    asm("jsr $FF62");
+    videomode(3);
 
-  printf("end of game");
+    printf("end of game");
 
-  printf("\n\nframes: %lu", game_frame);
-  printf("\nruntime: %lu seconds", runtime_seconds);
-  printf("\nfps: %lu\n\n", fps);
-}
-void main(void) {
-
-  bool run = true;
-  unsigned char joy;
-  clock_t start_time;
-  clock_t end_time;
-
-  uppercase_petscii_40x30();
-  random_setup();
-  vera_loads();
-  joy_install(cx16_std_joy);
-  fire_color_setup();
-  fire_setup();
-  bombs_setup();
-  wind_setup();
-  wind_sprites_setup();
-  vera_screen_setup();
-  mouse_setup();
-
-  start_time = clock();
-
-  while (run) {
-    joy = joy_read(0);
-
-    if (JOY_DOWN(joy)) {
-      run = false;
-    }
-    game_frame++;
-    burn();
-    wind_update();
-    wind_sprite_update();
-    bombs_blink();
-    bombs_explode();
-    wait();
+    printf("\n\nframes: %lu", game_frame);
+    printf("\nruntime: %lu seconds", runtime_seconds);
+    printf("\nfps: %lu\n\n", fps);
   }
+  void main(void) {
 
-  end_time = clock();
-  outro(start_time, end_time);
+    bool run = true;
+    unsigned char joy;
+    clock_t start_time;
+    clock_t end_time;
 
-}
+    uppercase_petscii_40x30();
+    random_setup();
+    vera_loads();
+    joy_install(cx16_std_joy);
+    fire_color_setup();
+    fire_setup();
+    bombs_setup();
+    wind_setup();
+    wind_sprites_setup();
+    vera_screen_setup();
+    mouse_setup();
+
+    start_time = clock();
+
+    while (run) {
+      joy = joy_read(0);
+
+      if (JOY_DOWN(joy)) {
+        run = false;
+      }
+      game_frame++;
+      burn();
+      wind_update();
+      wind_sprite_update();
+      bombs_blink();
+      bombs_explode();
+      wait();
+    }
+
+    end_time = clock();
+    outro(start_time, end_time);
+
+  }
