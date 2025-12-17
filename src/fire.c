@@ -75,14 +75,15 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 #define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
 
 //BOMBS
-#define NUM_BOMBS 10
+#define NUM_BOMBS 60
 #define NUM_UXBOMB_FRAMES 4
-#define BOMB_EXPLOSION_CHANCE 16000
+#define BOMB_BURNING_DETONATION_CHANCE 16000
 #define EXPLOSION_FRAMES 7
 #define EXPLOSION_SIZE_TILES 9
 #define EXPLOSION_IGNITE_CHANCE 00
-#define EXPLOSION_FLATTEN_CHANCE 32000
-#define EXPLOSION_BURNOUT_CHANCE 32000
+#define EXPLOSION_FLATTEN_CHANCE 16000
+#define EXPLOSION_BURNOUT_CHANCE 26000
+#define EXPLOSION_DETONATE_CHANCE 30000
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = { 0x00, 0x01, 0x00, 0x03 };
 unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = { 0x00, 0x57, 0x00, 0x5A };
 unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
@@ -499,7 +500,7 @@ void burn() {
     bomb_id = bomb_index_get(rand_y, rand_x);
 
     if (bomb_id < NUM_BOMBS && bomb_pool[bomb_id].unexploded) {
-      if (rand() < BOMB_EXPLOSION_CHANCE) {
+      if (rand() < BOMB_BURNING_DETONATION_CHANCE) {
         bomb_pool[bomb_id].exploding = true;
         bomb_pool[bomb_id].unexploded = false;
         bomb_pool[bomb_id].frame = 1;  // not zero
@@ -640,7 +641,7 @@ void bombs_blink(void) {
   }
 }
 void bombs_explode() {
-  unsigned char prev_frame, b;
+  unsigned char prev_frame, b, tb;
   signed char dy, dx;
   signed char exp_y, exp_x;
 
@@ -676,6 +677,17 @@ void bombs_explode() {
         // trailing edge of explosion
         if (bomb_explosion_animation[prev_frame][dy + 4][dx + 4]) {
 
+          // trigger other bombs
+          tb = bomb_index_get(exp_y, exp_x);
+          if (tb < NUM_BOMBS && bomb_pool[tb].unexploded) {
+            if (rand() < EXPLOSION_DETONATE_CHANCE) {
+              bomb_pool[tb].exploding = true;
+              bomb_pool[tb].unexploded = false;
+              bomb_pool[tb].frame = 1;  // not zero
+              continue;
+            }
+          }
+
           // just repaint water tiles
           if (water_index_get(exp_y, exp_x) > 0) {
             VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
@@ -691,8 +703,8 @@ void bombs_explode() {
             }
           }
 
-          // sometimes ignite non-burning non-water cells
-          if (fire_index_get(exp_y, exp_x) == NO_FIRE_MAGIC_VALUE && water_index_get(exp_y, exp_x) == 0) {
+          // sometimes ignite non-burning land cells
+          if (fire_index_get(exp_y, exp_x) == NO_FIRE_MAGIC_VALUE) {
             if (rand() < EXPLOSION_IGNITE_CHANCE) {
               fire_index_set(exp_y, exp_x, FIRE_DURATION);
               VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
@@ -719,71 +731,71 @@ void bombs_explode() {
   }
 }
 
-  // EXECUTION
-  void outro(clock_t start_time, clock_t end_time) {
-    unsigned long fps = 0;
-    unsigned long runtime_seconds = 0;
+// EXECUTION
+void outro(clock_t start_time, clock_t end_time) {
+  unsigned long fps = 0;
+  unsigned long runtime_seconds = 0;
 
-    runtime_seconds = 1 + ((end_time - start_time) / CLOCKS_PER_SEC);
-    fps = game_frame / runtime_seconds;
+  runtime_seconds = 1 + ((end_time - start_time) / CLOCKS_PER_SEC);
+  fps = game_frame / runtime_seconds;
 
-    // Reset VERA to text mode
-    VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
+  // Reset VERA to text mode
+  VERA.display.video = 0b00100001;  // Reset to text mode with only layer 1 active
 
-    // Reset layer 0 to default text mode configuration
-    VERA.layer1.hscroll = 0;
-    VERA.layer1.vscroll = 0;
-    VERA.layer1.config = 0b01100000;  // 128x64
-    VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
+  // Reset layer 0 to default text mode configuration
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+  VERA.layer1.config = 0b01100000;  // 128x64
+  VERA.layer1.mapbase = (0x1b000 >> 9) & 0b11111100;
 
-    //petsci lower / gfx 80x30
-    asm("lda #2");
-    asm("jsr $FF62");
-    videomode(3);
+  //petsci lower / gfx 80x30
+  asm("lda #2");
+  asm("jsr $FF62");
+  videomode(3);
 
-    printf("end of game");
+  printf("end of game");
 
-    printf("\n\nframes: %lu", game_frame);
-    printf("\nruntime: %lu seconds", runtime_seconds);
-    printf("\nfps: %lu\n\n", fps);
-  }
-  void main(void) {
+  printf("\n\nframes: %lu", game_frame);
+  printf("\nruntime: %lu seconds", runtime_seconds);
+  printf("\nfps: %lu\n\n", fps);
+}
+void main(void) {
 
-    bool run = true;
-    unsigned char joy;
-    clock_t start_time;
-    clock_t end_time;
+  bool run = true;
+  unsigned char joy;
+  clock_t start_time;
+  clock_t end_time;
 
-    uppercase_petscii_40x30();
-    random_setup();
-    vera_loads();
-    joy_install(cx16_std_joy);
-    fire_color_setup();
-    fire_setup();
-    bombs_setup();
-    wind_setup();
-    wind_sprites_setup();
-    vera_screen_setup();
-    mouse_setup();
+  uppercase_petscii_40x30();
+  random_setup();
+  vera_loads();
+  joy_install(cx16_std_joy);
+  fire_color_setup();
+  fire_setup();
+  bombs_setup();
+  wind_setup();
+  wind_sprites_setup();
+  vera_screen_setup();
+  mouse_setup();
 
-    start_time = clock();
+  start_time = clock();
 
-    while (run) {
-      joy = joy_read(0);
+  while (run) {
+    joy = joy_read(0);
 
-      if (JOY_DOWN(joy)) {
-        run = false;
-      }
-      game_frame++;
-      burn();
-      wind_update();
-      wind_sprite_update();
-      bombs_blink();
-      bombs_explode();
-      wait();
+    if (JOY_DOWN(joy)) {
+      run = false;
     }
-
-    end_time = clock();
-    outro(start_time, end_time);
-
+    game_frame++;
+    burn();
+    wind_update();
+    wind_sprite_update();
+    bombs_blink();
+    bombs_explode();
+    wait();
   }
+
+  end_time = clock();
+  outro(start_time, end_time);
+
+}
