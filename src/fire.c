@@ -501,9 +501,7 @@ void burn() {
 
     if (bomb_id < NUM_BOMBS && bomb_pool[bomb_id].unexploded) {
       if (rand() < BOMB_BURNING_DETONATION_CHANCE) {
-        bomb_pool[bomb_id].exploding = true;
-        bomb_pool[bomb_id].unexploded = false;
-        bomb_pool[bomb_id].frame = 1;  // not zero
+        detonate_bomb(bomb_id);
       }
     }
 
@@ -640,6 +638,13 @@ void bombs_blink(void) {
     bomb_pool[b].frame++;
   }
 }
+void detonate_bomb(unsigned char b) {
+  if (b < NUM_BOMBS && bomb_pool[b].unexploded) {
+    bomb_pool[b].exploding = true;
+    bomb_pool[b].unexploded = false;
+    bomb_pool[b].frame = 1;
+  }
+}
 void bombs_explode() {
   unsigned char prev_frame, b, tb;
   signed char dy, dx;
@@ -681,9 +686,7 @@ void bombs_explode() {
           tb = bomb_index_get(exp_y, exp_x);
           if (tb < NUM_BOMBS && bomb_pool[tb].unexploded) {
             if (rand() < EXPLOSION_DETONATE_CHANCE) {
-              bomb_pool[tb].exploding = true;
-              bomb_pool[tb].unexploded = false;
-              bomb_pool[tb].frame = 1;  // not zero
+              detonate_bomb(tb);
               continue;
             }
           }
