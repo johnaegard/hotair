@@ -9,6 +9,9 @@
 #include "wait.h"
 #include "vera.h"
 
+// Forward declarations
+void detonate_bomb(unsigned char b);
+
 #define SKIP_2_BYTE_HEADER 0
 #define USE_2_BYTE_HEADER 1
 #define NO_2_BYTE_HEADER 2
