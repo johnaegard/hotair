@@ -37,11 +37,13 @@ void detonate_bomb(unsigned char b);
 
 // FIRE APPEARANCE
 #define FIRE_NUM_BG_COLORS 4
-#define FIRE_NUM_FG_COLORS 8
-#define FIRE_COLOR_COMBINATIONS (FIRE_NUM_FG_COLORS * FIRE_NUM_BG_COLORS)
+#define FIRE_NUM_FG_COLORS 2
+// #define FIRE_COLOR_COMBINATIONS (FIRE_NUM_BG_COLORS * FIRE_NUM_BG_COLORS)
+#define FIRE_COLOR_COMBINATIONS 18
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x01, 0x02, 0x03,0x07, 0x08, 0x0A, 0x0D, 0x0F };
-unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
+unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x00, 0x01 };
+unsigned char fire_colors[FIRE_COLOR_COMBINATIONS] = 
+{0x22, 0x77, 0x88, 0XAA, 0x22, 0x77, 0x88, 0XAA, 0x77, 0x87, 0XA7, 0x71, 0x81, 0xA1, 0x77, 0x88, 0x77, 0x88};
 
 // fire dynamics
 #define FIRE_SAMPLES_PER_FRAME 72
@@ -357,7 +359,7 @@ void fire_color_setup(void) {
   lookup_index = 0;
   for (bg_index = 0; bg_index < FIRE_NUM_BG_COLORS; bg_index++) {
     for (fg_index = 0; fg_index < FIRE_NUM_FG_COLORS; fg_index++) {
-      fire_colors[lookup_index] = (fire_bgcolors[bg_index] | fire_fgcolors[fg_index]);
+//      fire_colors[lookup_index] = (fire_bgcolors[bg_index] | fire_fgcolors[fg_index]);
       lookup_index++;
     }
   }
