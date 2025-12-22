@@ -1,5 +1,5 @@
 CC=cl65
-X16=~/src/x16/x16emu/x16emu -fullscreen -run -scale 2
+X16=~/src/x16/x16emu/x16emu -run -scale 2
 hotair:
 	$(CC) -O -o HOTAIR.PRG -t cx16 -Ln hotair.lbl -C cx16-bank.cfg src/hotair.c src/wait.c
 
