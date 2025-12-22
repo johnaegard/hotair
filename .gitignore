@@ -58,9 +58,6 @@ dkms.conf
 *.bak*
 *.lbl
 
-.vscode*
-.vscode/*
-
 build/*
 
 *.PRG.0*

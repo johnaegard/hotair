@@ -19,19 +19,11 @@ void detonate_bomb(unsigned char b);
 // VERA LOAD ADDRESSES
 #define MAP0_BASE_ADDR 0x0000
 #define MAP1_BASE_ADDR 0x2000
-#define NEEDLE_SPRITE_BASE_ADDR 0x6000
-#define CIRCLE_SPRITE_BASE_ADDR 0x6E00
+#define NEEDLE_SPRITE_BITMAP_ADDR 0x6000
+#define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00
+#define FACE_SPRITE_BITMAP_ADDR 0x7000
 #define CHARSET_BASE_ADDR 0x1F000
 #define SPRITE_ATTR_BASE_ADDR 0x1FC08
-
-#define MONOPLANE_SPRITE_BASE_ADDR 0x17800
-#define FLAK_SPRITE_BASE_ADDR 0x17B80
-#define CROSSHAIR_SPRITE_BASE_ADDR 0x17F00
-#define FLAK_BURST_SPRITE_BASE_ADDR 0x18100
-#define FLAK_SHELL_SPRITE_BASE_ADDR 0x18F00
-#define PALETTE_BASE_ADDR 0x1FA00
-
-#define HI_RES true
 
 #define MAP_WIDTH_TILES 64
 
@@ -79,6 +71,7 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 #define NEEDLE_SPRITE_FRAME_BYTES 512
 #define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
 #define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
+#define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_BASE_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
 
 //BOMBS
 #define NUM_BOMBS 16
@@ -235,7 +228,7 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
   // 1 - File has the 2 byte header, use it
   // 2 - File does NOT have the 2 byte header
 
-  cbm_k_setlfs(SKIP_2_BYTE_HEADER, 8, secondary_address);
+  cbm_k_setlfs(0, 8, secondary_address);
 
   if (base_addr >= 0x10000) {
     base_addr -= 0x10000;
@@ -269,8 +262,10 @@ void vera_loads(void) {
   printf("loading vera\n");
   load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("circle.bin", CIRCLE_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("face.bin", FACE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+
   // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
   // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
   // load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
@@ -286,8 +281,8 @@ void vera_screen_setup(void) {
   asm("jsr $FF62");
 
   VERA.display.video = 0b01110001;    // activate layers & sprites
-  VERA.display.hscale = HI_RES ? 128 : 64;
-  VERA.display.vscale = HI_RES ? 128 : 64;
+  VERA.display.hscale = 128;
+  VERA.display.vscale = 128;
 
   VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9) & 0xFF;  // top eight bits of 17-bit address and 16x16
 
@@ -576,8 +571,8 @@ void wind_sprites_setup(void) {
   VERA.address_hi = WIND_CIRCLE_SPRITE_ATTR_ADDR >> 16;
   VERA.address_hi |= VERA_INC_1;
 
-  VERA.data0 = CIRCLE_SPRITE_BASE_ADDR >> 5;
-  VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BASE_ADDR >> 13);
+  VERA.data0 = CIRCLE_SPRITE_BITMAP_ADDR >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (CIRCLE_SPRITE_BITMAP_ADDR >> 13);
   VERA.data0 = WIND_GAUGE_X_PX;
   VERA.data0 = WIND_GAUGE_X_PX >> 8;
   VERA.data0 = WIND_GAUGE_Y_PX;
@@ -591,7 +586,7 @@ void wind_sprite_update(void) {
   VERA.address_hi = WIND_NEEDLE_SPRITE_ATTR_ADDR >> 16;
   VERA.address_hi |= VERA_INC_1;
 
-  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BASE_ADDR, NEEDLE_SPRITE_FRAME_BYTES, wind_direction);
+  sprite24_frame(sprite_frame, NEEDLE_SPRITE_BITMAP_ADDR, NEEDLE_SPRITE_FRAME_BYTES, wind_direction);
   VERA.data0 = sprite_frame->frame_addr >> 5;
   VERA.data0 = SPRITE_BYTE1_4BPP | (sprite_frame->frame_addr >> 13);
   VERA.data0 = WIND_GAUGE_X_PX;
@@ -601,7 +596,21 @@ void wind_sprite_update(void) {
   VERA.data0 = 0b00001100 | sprite_frame->flips; // Z-Depth=3, Sprite in front of layer 1
   VERA.data0 = 0b10100000; // 32x32 pixel image
 }
+void face_sprite_setup(void) {
 
+  VERA.address = FACE_SPRITE_ATTR_ADDR;
+  VERA.address_hi = FACE_SPRITE_ATTR_ADDR >> 16;
+  VERA.address_hi |= VERA_INC_1;
+
+  VERA.data0 = FACE_SPRITE_BITMAP_ADDR >> 5;
+  VERA.data0 = SPRITE_BYTE1_4BPP | (FACE_SPRITE_BITMAP_ADDR >> 13);
+  VERA.data0 = 320;
+  VERA.data0 = 320 >> 8;
+  VERA.data0 = 240;
+  VERA.data0 = 240 >> 8;
+  VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
+  VERA.data0 = SPRITE_HEIGHT_8PX | SPRITE_WIDTH_8PX;
+}
 // BOMBS
 void bombs_setup(void) {
   unsigned char b, bomb_x, bomb_y;
@@ -783,6 +792,7 @@ void main(void) {
   wind_setup();
   wind_sprites_setup();
   vera_screen_setup();
+  face_sprite_setup();
   mouse_setup();
 
   start_time = clock();

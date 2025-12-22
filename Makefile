@@ -1,6 +1,5 @@
 CC=cl65
-X16=~/src/x16/x16emu/x16emu -fullscreen -run
-
+X16=~/src/x16/x16emu/x16emu -fullscreen -run -scale 2
 hotair:
 	$(CC) -O -o HOTAIR.PRG -t cx16 -Ln hotair.lbl -C cx16-bank.cfg src/hotair.c src/wait.c
 
@@ -36,3 +35,16 @@ benchmark-reads:
 
 runbenchmark-reads: benchmark-reads
 	../x16emu/x16emu  -prg build/BENCHMARK-READS.PRG -run -debug
+
+tile-edit: 
+	$(X16) -startin assets -prg assets/TELOADER.PRG -run 
+
+tile-edit-char: 
+	$(X16) -startin assets -prg assets/CHARLOAD.PRG -run 
+
+petscii-dump:
+	$(CC) -O -o build/PETSCIIDUMP.PRG -t cx16 src/petscii-dump.c
+
+run-petscii-dump: petscii-dump
+	rm -f assets/PETSCII*.BIN && ../x16emu/x16emu -startin assets -prg build/PETSCIIDUMP.PRG -run -debug
+
