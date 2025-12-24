@@ -7,8 +7,8 @@
 #include <time.h>
 #include <stdio.h>
 #include "wait.h"
-#include "vera.h"
-#include "verautil.h"
+#include "vera-constants.h"
+#include "vera-util.h"
 #include "burning-petscii.h"
 
 // GLOBAL VARIABLE DEFINITIONS

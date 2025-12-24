@@ -2,8 +2,8 @@
 #include <cbm.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "vera.h"
-#include "verautil.h"
+#include "vera-constants.h"
+#include "vera-util.h"
 
 // External variables and definitions needed from fire.c
 extern unsigned char file_error_num;

@@ -18,12 +18,6 @@ bankedram:
 runbankedram: bankedram
 	../x16emu/x16emu -prg build/BANKEDRAM.PRG -run -debug
 
-fire:
-	$(CC) -O -o build/FIRE.PRG -t cx16  src/burning-petscii.c src/wait.c src/verautil.c
-
-run: fire
-	cd assets && $(X16) -debug -prg ../build/FIRE.PRG && cd -
-
 benchmark:
 	$(CC) -O -o build/BENCHMARK.PRG -t cx16 src/ancilliary/benchmark.c
 
@@ -44,4 +38,10 @@ petscii-dump:
 
 run-petscii-dump: petscii-dump
 	rm -f assets/PETSCII*.BIN && $(X16) -startin assets -prg build/PETSCIIDUMP.PRG -run -debug
+
+burning-petscii:
+	$(CC) -O -o build/FIRE.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c
+
+run-burning-petscii: burning-petscii
+	cd assets && $(X16) -debug -prg ../build/FIRE.PRG && cd -
 
