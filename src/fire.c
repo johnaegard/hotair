@@ -9,80 +9,18 @@
 #include "wait.h"
 #include "vera.h"
 #include "verautil.h"
+#include "fire.h"
 
-// Forward declarations
-void detonate_bomb(unsigned char b);
-
-#define SKIP_2_BYTE_HEADER 0
-#define USE_2_BYTE_HEADER 1
-#define NO_2_BYTE_HEADER 2
-
-// VERA LOAD ADDRESSES
-#define MAP0_ADDR 0x0000
-#define MAP1_ADDR 0x2000
-#define NEEDLE_SPRITE_BITMAP_ADDR 0x6000
-#define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00
-#define FACE_SPRITE_BITMAP_ADDR 0x7000
-#define TILESET_ADDR 0x1F000
-#define SPRITE_ATTR_ADDR 0x1FC08
-
-#define MAP_WIDTH_TILES 64
-
-// FIRE APPEARANCE
-#define FIRE_NUM_BG_COLORS 4
-#define FIRE_NUM_FG_COLORS 2
-#define FIRE_COLOR_COMBINATIONS 18
+// GLOBAL VARIABLE DEFINITIONS
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
 unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x00, 0x01 };
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS] = 
 {0x22, 0x77, 0x88, 0XAA, 0x22, 0x77, 0x88, 0XAA, 0x77, 0x87, 0XA7, 0x71, 0x81, 0xA1, 0x77, 0x88, 0x77, 0x88};
 
-// fire dynamics
-#define FIRE_SAMPLES_PER_FRAME 72
-#define FIRE_DURATION 18
-#define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
-#define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 12000
-#define SOAKED_SEED_CHANCE 500
-#define SOAK_DURATION 10
-#define BURNT_OUT 255
-#define BURNT_OUT_CRUMBLE_TILE_CHANCE 12000
-
-// BANKED RAM
-#define BANK_NUM (*(unsigned char *)0x00)
-#define FIRE_AND_WATER_BANK 1
-#define FIRE_DATA_ADDRESS 0xA000   // banked ram window
-#define WATER_DATA_ADDRESS 0xB000  // top half of banked ram window
 char (*fire_index)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_index)[64] = (char (*)[64])WATER_DATA_ADDRESS;
+char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;
 
-#define BOMB_BANK 2
-#define BOMB_DATA_ADDRESS 0xA000  // banked ram window
-char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=2
-
-// WIND
-#define WIND_CHANGE_CHANCE 750
-#define WIND_DIRECTIONS 24
-#define WIND_GAUGE_X_PX 600
-#define WIND_GAUGE_Y_PX 440
-
-// SPRITE INDICES
-#define SPRITE_DEF_SIZE_BYTES 8
-#define NEEDLE_SPRITE_FRAME_BYTES 512
-#define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
-#define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
-#define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
-
-//BOMBS
-#define NUM_BOMBS 16
-#define NUM_UXBOMB_FRAMES 4
-#define BOMB_BURNING_DETONATION_CHANCE 16000
-#define EXPLOSION_FRAMES 7
-#define EXPLOSION_SIZE_TILES 9
-#define EXPLOSION_IGNITE_CHANCE 3000
-#define EXPLOSION_FLATTEN_CHANCE 16000
-#define EXPLOSION_BURNOUT_CHANCE 16000
-#define EXPLOSION_DETONATE_CHANCE 30000
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = { 0x00, 0x01, 0x00, 0x03 };
 unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = { 0x00, 0x57, 0x00, 0x5A };
 unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
@@ -153,23 +91,6 @@ unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][E
     {0,0,1,1,1,1,1,0,0}
   }
 };
-
-typedef struct {
-  unsigned char flips;
-  unsigned long frame_addr;
-} SpriteFrame;
-
-typedef struct {
-  unsigned char frame;
-  unsigned char x;
-  unsigned char y;
-  bool exploding;
-  bool unexploded;
-} Bomb;
-
-#define MAX_PEOPLE 4096
-
-typedef struct { unsigned char x; unsigned char y; unsigned char alive; } Person;
 
 Person people_pool[MAX_PEOPLE];
 unsigned int people_count = 0;
