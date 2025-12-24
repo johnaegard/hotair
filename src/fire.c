@@ -166,6 +166,7 @@ typedef struct {
   bool unexploded;
 } Bomb;
 
+
 SpriteFrame sprite_frame_data = { 0, 0 };
 SpriteFrame* sprite_frame = &sprite_frame_data;
 Bomb bomb_pool[NUM_BOMBS];
