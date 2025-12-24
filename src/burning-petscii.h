@@ -91,7 +91,9 @@ typedef struct {
 typedef struct { 
   unsigned char x; 
   unsigned char y; 
-  unsigned char alive; 
+  unsigned char alive;
+  unsigned char backed_char;
+  unsigned char backed_color;
 } Person;
 
 // GLOBAL VARIABLE DECLARATIONS

@@ -601,12 +601,17 @@ void people_setup(unsigned int num_people) {
       continue;
     }
 
-    // Write tile 129 at this location
-    VERA.address = vera_tilemap_addr_offsets[person_y][person_x] -1;
-    VERA.data0 = 0x81;  // tile 129 (0x81 in hex)
-    VERA.data0 = 0x21;  
-
     if (people_count < MAX_PEOPLE) {
+      // Read and save the current tile character and color
+      VERA.address = vera_tilemap_addr_offsets[person_y][person_x] - 1;
+      people_pool[people_count].backed_char = VERA.data0;
+      people_pool[people_count].backed_color = VERA.data0;
+
+      // Write tile 129 at this location
+      VERA.address = vera_tilemap_addr_offsets[person_y][person_x] - 1;
+      VERA.data0 = 0x81;  // tile 129 (0x81 in hex)
+      VERA.data0 = 0x21;  
+
       people_pool[people_count].x = person_x;
       people_pool[people_count].y = person_y;
       people_pool[people_count].alive = 1;
@@ -637,10 +642,15 @@ void people_move(void) {
 
   VERA.address_hi = 0 | VERA_INC_1;
 
-  // clear old position (paint generic land)
+  // restore old position with backed-up tile
   VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x] - 1;
-  VERA.data0 = 0x90; // generic land tile char
-  VERA.data0 = 0x01; // generic color
+  VERA.data0 = people_pool[pm_idx].backed_char;
+  VERA.data0 = people_pool[pm_idx].backed_color;
+
+  // read and save tile at new location before overwriting
+  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx] - 1;
+  people_pool[pm_idx].backed_char = VERA.data0;
+  people_pool[pm_idx].backed_color = VERA.data0;
 
   // draw person at new location
   VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx] - 1;
