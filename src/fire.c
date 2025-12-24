@@ -166,6 +166,21 @@ typedef struct {
   bool unexploded;
 } Bomb;
 
+#define MAX_PEOPLE 4096
+
+typedef struct { unsigned char x; unsigned char y; unsigned char alive; } Person;
+
+Person people_pool[MAX_PEOPLE];
+unsigned int people_count = 0;
+
+const signed char people_dx[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+const signed char people_dy[8] = {  1, 1, 1,  0, 0, -1, -1, -1 };
+
+/* globals used by people_move to avoid function-local variables */
+unsigned int pm_idx;
+signed char pm_dir;
+signed char pm_nx;
+signed char pm_ny;
 
 SpriteFrame sprite_frame_data = { 0, 0 };
 SpriteFrame* sprite_frame = &sprite_frame_data;
@@ -769,6 +784,8 @@ void people_setup(unsigned int num_people) {
 
   VERA.address_hi = 0 | VERA_INC_1;
 
+  people_count = 0;
+
   while (placed < num_people) {
     person_x = rand() & 0x3F;  // 0-63
     person_y = rand() & 0x3F;  // 0-63
@@ -782,8 +799,51 @@ void people_setup(unsigned int num_people) {
     VERA.address = vera_tilemap_addr_offsets[person_y][person_x] -1;
     VERA.data0 = 0x81;  // tile 129 (0x81 in hex)
     VERA.data0 = 0x21;  
+
+    if (people_count < MAX_PEOPLE) {
+      people_pool[people_count].x = person_x;
+      people_pool[people_count].y = person_y;
+      people_pool[people_count].alive = 1;
+      people_count++;
+    }
+
     placed++;
   }
+}
+
+void people_move(void) {
+  if (people_count == 0) return;
+
+  pm_idx = rand() % people_count;
+  if (!people_pool[pm_idx].alive) return;
+
+  pm_dir = rand() % 8;
+
+  pm_nx = people_pool[pm_idx].x + people_dx[pm_dir];
+  pm_ny = people_pool[pm_idx].y + people_dy[pm_dir];
+
+  // bounds check
+  if (pm_nx < 0 || pm_nx >= 64 || pm_ny < 0 || pm_ny >= 64) return;
+
+  // only move to non-burning, non-water tiles
+  if (fire_index_get(pm_ny, pm_nx) < NO_FIRE_MAGIC_VALUE) return;
+  if (water_index_get(pm_ny, pm_nx) > 0) return;
+
+  VERA.address_hi = 0 | VERA_INC_1;
+
+  // clear old position (paint generic land)
+  VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x] - 1;
+  VERA.data0 = 0x90; // generic land tile char
+  VERA.data0 = 0x01; // generic color
+
+  // draw person at new location
+  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx] - 1;
+  VERA.data0 = 0x81;
+  VERA.data0 = 0x21;
+
+  // update pool
+  people_pool[pm_idx].x = pm_nx;
+  people_pool[pm_idx].y = pm_ny;
 }
 
 // EXECUTION
@@ -828,7 +888,7 @@ void main(void) {
   fire_color_setup();
   fire_setup();
   bombs_setup();
-  people_setup(100);  // Place 20 people on the map
+  people_setup(100);  // Place 100 people on the map
   wind_setup();
   wind_sprites_setup();
   vera_screen_setup();
@@ -849,6 +909,7 @@ void main(void) {
     wind_sprite_update();
     bombs_blink();
     bombs_explode();
+    people_move();
     wait();
   }
 
