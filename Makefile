@@ -19,7 +19,7 @@ runbankedram: bankedram
 	../x16emu/x16emu -prg build/BANKEDRAM.PRG -run -debug
 
 fire:
-	$(CC) -O -o build/FIRE.PRG -t cx16  src/fire.c src/wait.c
+	$(CC) -O -o build/FIRE.PRG -t cx16  src/fire.c src/wait.c src/verautil.c
 
 run: fire
 	cd assets && $(X16) -debug -prg ../build/FIRE.PRG && cd -
