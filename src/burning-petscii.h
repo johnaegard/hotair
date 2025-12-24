@@ -72,7 +72,7 @@ void detonate_bomb(unsigned char b);
 #define EXPLOSION_DETONATE_CHANCE 30000
 
 // PEOPLE
-#define MAX_PEOPLE 4096
+#define MAX_PEOPLE 50
 
 // TYPE DEFINITIONS
 typedef struct {
