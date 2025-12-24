@@ -4,7 +4,11 @@
 #include <stdbool.h>
 
 // Forward declarations
-void detonate_bomb(unsigned char b);
+unsigned char fire_index_get(unsigned char row, unsigned char col);
+void fire_index_set(unsigned char row, unsigned char col, char value);
+unsigned char water_index_get(unsigned char row, unsigned char col);
+void water_index_set(unsigned char row, unsigned char col, char value);
+void burn_out_tile(unsigned char y, unsigned char x);
 
 // HEADER OPTIONS
 #define SKIP_2_BYTE_HEADER 0

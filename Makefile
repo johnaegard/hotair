@@ -40,7 +40,7 @@ run-petscii-dump: petscii-dump
 	rm -f assets/PETSCII*.BIN && $(X16) -startin assets -prg build/PETSCIIDUMP.PRG -run -debug
 
 burning-petscii:
-	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c
+	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c
 
 run-burning-petscii: burning-petscii
 	cd assets && $(X16) -debug -prg ../build/BURNING-PETSCII.PRG && cd -
