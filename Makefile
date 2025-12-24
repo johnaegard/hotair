@@ -7,31 +7,31 @@ runhotair:
 	../x16emu/x16emu -prg HOTAIR.PRG -run -debug
 
 bitshift:
-	$(CC) -O -o build/BITSHIFT.PRG -t cx16 src/bitshift.c
+	$(CC) -O -o build/BITSHIFT.PRG -t cx16 src/ancilliary/bitshift.c
 
 runbitshift: bitshift
 	../x16emu/x16emu -prg BITSHIFT.PRG -run -debug
 
 bankedram:
-	$(CC) -O -o build/BANKEDRAM.PRG -t cx16 src/bankedram.c
+	$(CC) -O -o build/BANKEDRAM.PRG -t cx16 src/ancilliary/bankedram.c
 
 runbankedram: bankedram
 	../x16emu/x16emu -prg build/BANKEDRAM.PRG -run -debug
 
 fire:
-	$(CC) -O -o build/FIRE.PRG -t cx16  src/fire.c src/wait.c src/verautil.c
+	$(CC) -O -o build/FIRE.PRG -t cx16  src/burning-petscii.c src/wait.c src/verautil.c
 
 run: fire
 	cd assets && $(X16) -debug -prg ../build/FIRE.PRG && cd -
 
 benchmark:
-	$(CC) -O -o build/BENCHMARK.PRG -t cx16 src/benchmark.c
+	$(CC) -O -o build/BENCHMARK.PRG -t cx16 src/ancilliary/benchmark.c
 
 runbenchmark: benchmark
 	../x16emu/x16emu -prg build/BENCHMARK.PRG -run -debug
 
 benchmark-reads:
-	$(CC) -O -o build/BENCHMARK-READS.PRG -t cx16 src/benchmark-reads.c
+	$(CC) -O -o build/BENCHMARK-READS.PRG -t cx16 src/ancilliary/benchmark-reads.c
 
 runbenchmark-reads: benchmark-reads
 	../x16emu/x16emu  -prg build/BENCHMARK-READS.PRG -run -debug
@@ -40,7 +40,7 @@ tile-edit:
 	$(X16) -capture -scale 2 -startin assets -prg assets/TELOADER.PRG -run 
 
 petscii-dump:
-	$(CC) -O -o build/PETSCIIDUMP.PRG -t cx16 src/petscii-dump.c
+	$(CC) -O -o build/PETSCIIDUMP.PRG -t cx16 src/ancilliary/petscii-dump.c
 
 run-petscii-dump: petscii-dump
 	rm -f assets/PETSCII*.BIN && $(X16) -startin assets -prg build/PETSCIIDUMP.PRG -run -debug

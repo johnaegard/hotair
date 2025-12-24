@@ -9,7 +9,7 @@
 #include "wait.h"
 #include "vera.h"
 #include "verautil.h"
-#include "fire.h"
+#include "burning-petscii.h"
 
 // GLOBAL VARIABLE DEFINITIONS
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
