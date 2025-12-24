@@ -17,20 +17,19 @@ void detonate_bomb(unsigned char b);
 #define NO_2_BYTE_HEADER 2
 
 // VERA LOAD ADDRESSES
-#define MAP0_BASE_ADDR 0x0000
-#define MAP1_BASE_ADDR 0x2000
+#define MAP0_ADDR 0x0000
+#define MAP1_ADDR 0x2000
 #define NEEDLE_SPRITE_BITMAP_ADDR 0x6000
 #define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00
 #define FACE_SPRITE_BITMAP_ADDR 0x7000
-#define CHARSET_BASE_ADDR 0x1F000
-#define SPRITE_ATTR_BASE_ADDR 0x1FC08
+#define TILESET_ADDR 0x1F000
+#define SPRITE_ATTR_ADDR 0x1FC08
 
 #define MAP_WIDTH_TILES 64
 
 // FIRE APPEARANCE
 #define FIRE_NUM_BG_COLORS 4
 #define FIRE_NUM_FG_COLORS 2
-// #define FIRE_COLOR_COMBINATIONS (FIRE_NUM_BG_COLORS * FIRE_NUM_BG_COLORS)
 #define FIRE_COLOR_COMBINATIONS 18
 unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
 unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x00, 0x01 };
@@ -69,9 +68,9 @@ char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;  // must use BANK_NUM=
 // SPRITE INDICES
 #define SPRITE_DEF_SIZE_BYTES 8
 #define NEEDLE_SPRITE_FRAME_BYTES 512
-#define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
-#define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_BASE_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
-#define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_BASE_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
+#define WIND_NEEDLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_ADDR + (0 * SPRITE_DEF_SIZE_BYTES))
+#define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
+#define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
 
 //BOMBS
 #define NUM_BOMBS 16
@@ -260,12 +259,12 @@ void load_into_vera(char* filename, unsigned long base_addr, char secondary_addr
 }
 void vera_loads(void) {
   printf("loading vera\n");
-  load_into_vera("map0.bin", MAP0_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("map1.bin", MAP1_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("map0.bin", MAP0_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("map1.bin", MAP1_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("sprite1.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("face.bin", FACE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("petscii.bin", CHARSET_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("petscii.bin", TILESET_ADDR, SKIP_2_BYTE_HEADER);
 
   // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
   // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
@@ -286,7 +285,7 @@ void vera_screen_setup(void) {
   VERA.display.hscale = DC_HSCALE_640;
   VERA.display.vscale = DC_VSCALE_480;
 
-  VERA.layer0.mapbase = (MAP0_BASE_ADDR >> 9);
+  VERA.layer0.mapbase = (MAP0_ADDR >> 9);
 
   VERA.layer0.config =
     LAYER_MAP_HEIGHT_64 |
@@ -296,7 +295,7 @@ void vera_screen_setup(void) {
     LAYER_BPP_1;
 
   VERA.layer0.tilebase = 
-    (CHARSET_BASE_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
+    (TILESET_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
     TILE_HEIGHT_8PX | 
     TILE_WIDTH_8PX;
 
@@ -308,11 +307,11 @@ void vera_screen_setup(void) {
     LAYER_BPP_1;
 
   VERA.layer1.tilebase = 
-    (CHARSET_BASE_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
+    (TILESET_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
     TILE_HEIGHT_8PX | 
     TILE_WIDTH_8PX;
 
-  VERA.layer1.mapbase = (MAP1_BASE_ADDR >> 9); 
+  VERA.layer1.mapbase = (MAP1_ADDR >> 9); 
   VERA.layer1.hscroll = 0;
   VERA.layer1.vscroll = 0;
 }
@@ -625,6 +624,7 @@ void face_sprite_setup(void) {
   VERA.data0 = SPRITE_BYTE6_Z_ABOVE_L2; // Z-Depth=3, Sprite in front of layer 1
   VERA.data0 = SPRITE_HEIGHT_8PX | SPRITE_WIDTH_8PX;
 }
+
 // BOMBS
 void bombs_setup(void) {
   unsigned char b, bomb_x, bomb_y;
@@ -761,6 +761,30 @@ void bombs_explode() {
   }
 }
 
+// PEOPLE
+void people_setup(unsigned int num_people) {
+  unsigned char person_x, person_y;
+  unsigned int placed = 0;
+
+  VERA.address_hi = 0 | VERA_INC_1;
+
+  while (placed < num_people) {
+    person_x = rand() & 0x3F;  // 0-63
+    person_y = rand() & 0x3F;  // 0-63
+
+    // Only place people on non-burning, non-water tiles
+    if (fire_index_get(person_y, person_x) < NO_FIRE_MAGIC_VALUE || water_index_get(person_y, person_x) > 0) {
+      continue;
+    }
+
+    // Write tile 129 at this location
+    VERA.address = vera_tilemap_addr_offsets[person_y][person_x] -1;
+    VERA.data0 = 0x81;  // tile 129 (0x81 in hex)
+    VERA.data0 = 0x21;  
+    placed++;
+  }
+}
+
 // EXECUTION
 void outro(clock_t start_time, clock_t end_time) {
   unsigned long fps = 0;
@@ -803,6 +827,7 @@ void main(void) {
   fire_color_setup();
   fire_setup();
   bombs_setup();
+  people_setup(100);  // Place 20 people on the map
   wind_setup();
   wind_sprites_setup();
   vera_screen_setup();
