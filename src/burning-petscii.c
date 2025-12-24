@@ -7,7 +7,6 @@
 #include <time.h>
 #include <stdio.h>
 #include "wait.h"
-#include "vera-constants.h"
 #include "vera-util.h"
 #include "bomb.h"
 #include "burning-petscii.h"
@@ -119,7 +118,6 @@ const signed char fire_xpread[8] = { -1,0,1,-1,1,-1,0,1 };
 const signed char fire_ypread[8] = { 1,1,1,0,0,-1,-1,-1 };
 signed char dieroll;
 signed char spread_x, spread_y, keycode;
-unsigned char file_error_num = 0;
 unsigned int die_roll;  /// ugh
 signed char wind_direction = 12;
 signed char needle_sprite_frame;
@@ -137,6 +135,64 @@ void mouse_setup(void) {
   asm("lda #1");
   asm("jsr $FF68");   // Call mouse_config Kernal Function
   wait();             // Wait a cycle for the mouse to fully activate
+}
+void vera_screen_setup(void) {
+
+VERA.display.video = 
+    SPRITES_ENABLED |
+    LAYER1_ENABLED |
+    LAYER0_ENABLED |
+    VGA_ENABLED;
+
+  VERA.display.hscale = DC_HSCALE_640;
+  VERA.display.vscale = DC_VSCALE_480;
+
+  VERA.layer0.mapbase = (MAP0_ADDR >> 9);
+
+  VERA.layer0.config =
+    LAYER_MAP_HEIGHT_64 |
+    LAYER_MAP_WIDTH_64 |
+    LAYER_T256C_OFF |
+    LAYER_BITMAP_OFF |
+    LAYER_BPP_1;
+
+  VERA.layer0.tilebase = 
+    (TILESET_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
+    TILE_HEIGHT_8PX | 
+    TILE_WIDTH_8PX;
+
+  VERA.layer1.config = 
+    LAYER_MAP_HEIGHT_64 | 
+    LAYER_MAP_WIDTH_128 | 
+    LAYER_T256C_OFF | 
+    LAYER_BITMAP_OFF | 
+    LAYER_BPP_1;
+
+  VERA.layer1.tilebase = 
+    (TILESET_ADDR >> 9 & TILE_BASE_ADDR_MASK) | 
+    TILE_HEIGHT_8PX | 
+    TILE_WIDTH_8PX;
+
+  VERA.layer1.mapbase = (MAP1_ADDR >> 9); 
+  VERA.layer1.hscroll = 0;
+  VERA.layer1.vscroll = 0;
+}
+void vera_loads(void) {
+  printf("loading vera\n");
+  load_into_vera("map0.bin", MAP0_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("map1.bin", MAP1_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("face.bin", FACE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("petscii.bin", TILESET_ADDR, SKIP_2_BYTE_HEADER);
+
+  // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
+  // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
+  // load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
 }
 
 // BANKED SHIT

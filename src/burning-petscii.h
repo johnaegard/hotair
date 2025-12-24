@@ -10,11 +10,6 @@ unsigned char water_index_get(unsigned char row, unsigned char col);
 void water_index_set(unsigned char row, unsigned char col, char value);
 void burn_out_tile(unsigned char y, unsigned char x);
 
-// HEADER OPTIONS
-#define SKIP_2_BYTE_HEADER 0
-#define USE_2_BYTE_HEADER 1
-#define NO_2_BYTE_HEADER 2
-
 // VERA LOAD ADDRESSES
 #define MAP0_ADDR 0x0000
 #define MAP1_ADDR 0x2000
