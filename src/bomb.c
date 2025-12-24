@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include "bomb.h"
 #include "burning-petscii.h"
-#include "vera-constants.h"
 
 unsigned char bomb_index_get(unsigned char row, unsigned char col) {
   BANK_NUM = BOMB_BANK;

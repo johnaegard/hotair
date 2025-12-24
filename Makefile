@@ -42,6 +42,12 @@ run-petscii-dump: petscii-dump
 burning-petscii:
 	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c
 
+display-tileset:
+	$(CC) -O -o build/DISPLAY-TILESET.PRG -t cx16 src/ancilliary/display-tileset.c src/vera-util.c
+
+run-display-tileset: display-tileset
+	cd assets && $(X16) -debug -prg ../build/DISPLAY-TILESET.PRG && cd -
+
 run-burning-petscii: burning-petscii
 	cd assets && $(X16) -debug -prg ../build/BURNING-PETSCII.PRG && cd -
 

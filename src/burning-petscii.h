@@ -1,5 +1,5 @@
-#ifndef FIRE_H
-#define FIRE_H
+#ifndef BURNING_PETSCII_H
+#define BURNING_PETSCII_H
 
 #include <stdbool.h>
 
@@ -64,17 +64,6 @@ void burn_out_tile(unsigned char y, unsigned char x);
 #define WIND_CIRCLE_SPRITE_ATTR_ADDR (SPRITE_ATTR_ADDR + (1 * SPRITE_DEF_SIZE_BYTES))
 #define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
 
-// BOMBS
-#define NUM_BOMBS 16
-#define NUM_UXBOMB_FRAMES 4
-#define BOMB_BURNING_DETONATION_CHANCE 16000
-#define EXPLOSION_FRAMES 7
-#define EXPLOSION_SIZE_TILES 9
-#define EXPLOSION_IGNITE_CHANCE 3000
-#define EXPLOSION_FLATTEN_CHANCE 16000
-#define EXPLOSION_BURNOUT_CHANCE 16000
-#define EXPLOSION_DETONATE_CHANCE 30000
-
 // PEOPLE
 #define MAX_PEOPLE 50
 
@@ -136,4 +125,4 @@ extern unsigned int die_roll;
 extern signed char wind_direction;
 extern signed char needle_sprite_frame;
 
-#endif // FIRE_H
+#endif
