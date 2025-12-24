@@ -34,14 +34,24 @@ void setup_tilemap(void)
   VERA.address = TILEMAP_VERA_ADDR & 0xFFFF;
   VERA.address_hi = (TILEMAP_VERA_ADDR >> 16) | VERA_INC_1;
 
-  for (y = 0; y < 16; y++){
-    if (y < 10) {
-      VERA.data0 = 0x30 + y;
+  VERA.data0 = 0x00;
+  VERA.data0 = 0x00;
+  VERA.data0 = 0x00;
+  VERA.data0 = 0x00;
+
+  for (y = 0; y <= 16; y++){
+    if (y == 0) {
+      VERA.data0 = 0x00;
+      VERA.data0 = 0x00;
+    }
+    else if (y < 11) {
+      VERA.data0 = 0x30 + y -1;
+      VERA.data0 = 0x07;
     }
     else{
-      VERA.data0 = y - 9;
+      VERA.data0 = y - 10;
+    VERA.data0 = 0x07;
     }
-    VERA.data0 = 0x01;
     VERA.data0 = 0x00;
     VERA.data0 = 0x00;
   }
@@ -50,39 +60,28 @@ void setup_tilemap(void)
   for (y = 0; y < 16; y++){
     VERA.address = TILEMAP_VERA_ADDR + (128 * (y + 2));
 
+    VERA.data0 = 0x24;
+    VERA.data0 = 0x07;
+
     if (y < 10) {
       VERA.data0 = 0x30 + y;
     }
     else{
       VERA.data0 = y - 9;
     }
-    VERA.data0 = 0x01;
+    VERA.data0 = 0x07;
+    VERA.data0 = 0x30;
+    VERA.data0 = 0x07;
+
     VERA.data0 = 0x00;
     VERA.data0 = 0x00;
 
-    for (x = 0; x < 16; x++)
-    {
-      if (tile_index > 255)
-      {
-        VERA.data0 = 0;
-        VERA.data0 = 0x00;
-        VERA.data0 = 0;
-        VERA.data0 = 0x00;
-      }
-      else
-      {
+    for (x = 0; x < 16; x++){
         VERA.data0 = tile_index;
         VERA.data0 = 0x01;
         VERA.data0 = 0;
         VERA.data0 = 0x00;
         tile_index++;
-      }
-    }
-    // Skip the rest of the tilemap row (64 tiles per row)
-    for (x = 16; x < 64; x++)
-    {
-      VERA.data0 = 0;
-      VERA.data0 = 0;
     }
   }
 }
