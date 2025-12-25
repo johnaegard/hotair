@@ -68,3 +68,4 @@ build/*
 distrib/*.bin
 distrib/*.BIN
 distrib/*.PRG
+distrib/*.prg

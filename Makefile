@@ -49,7 +49,9 @@ burning-petscii:
 	$(CC) -O -o build/burning-petscii.prg -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
 
 distrib-burning-petscii: burning-petscii
-	cp build/burning-petscii.prg distrib && cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
+	mkdir -p distrib && \
+	cp build/burning-petscii.prg distrib && \
+	cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
 
 run-burning-petscii: distrib-burning-petscii
 	cd distrib && $(X16) -debug -prg burning-petscii.prg && cd -
