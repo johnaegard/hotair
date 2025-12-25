@@ -185,14 +185,6 @@ void vera_loads(void) {
   load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("face.bin", FACE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("tiles.bin", TILESET_ADDR, SKIP_2_BYTE_HEADER);
-
-  // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
-  // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  // load_into_vera("flak16.bin", FLAK_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  // load_into_vera("crosshair32.bin", CROSSHAIR_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  // load_into_vera("flakburst32.bin", FLAK_BURST_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  // load_into_vera("flakshell16.bin", FLAK_SHELL_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
-  // load_into_vera("palette.bin", PALETTE_BASE_ADDR, NO_2_BYTE_HEADER);
 }
 
 // BANKED SHIT
@@ -244,8 +236,6 @@ void fire_color_setup(void) {
     }
   }
 }
-
-#define COLOR_BYTE 1
 
 void vera_tilemap_addr_offsets_setup(void) {
   unsigned char r, c;
@@ -351,13 +341,13 @@ void fire_setup(void) {
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
       if (fire_index_get(r, c) < NO_FIRE_MAGIC_VALUE) {
-        addr = vera_tilemap_addr_offsets[r][c] + COLOR_BYTE;
+        addr = vera_tilemap_addr_offsets[r][c] + 1;
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
       }
       if (water_index_get(r, c) > 0) {
-        VERA.address = vera_tilemap_addr_offsets[r][c] + COLOR_BYTE;
-        VERA.data0 = 0x60;
+        VERA.address = vera_tilemap_addr_offsets[r][c] + 1;
+        VERA.data0 = 0x66;
       }
     }
   }
@@ -369,7 +359,7 @@ void burn_out_tile(unsigned char y, unsigned char x) {
     VERA.data0 = 0x66;
   }
   else {
-    VERA.address = vera_tilemap_addr_offsets[y][x] + COLOR_BYTE;
+    VERA.address = vera_tilemap_addr_offsets[y][x] + 1;
   }
   VERA.data0 = 0xB0;
 }
@@ -413,7 +403,7 @@ void burn() {
     // 
     // YOU TWINKLE
     //
-    VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] + COLOR_BYTE;
+    VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] + 1;
     VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
 
     //
@@ -429,7 +419,7 @@ void burn() {
         }
         else if (fire_index_get(spread_y, spread_x) == NO_FIRE_MAGIC_VALUE) {
           fire_index_set(spread_y, spread_x, FIRE_DURATION);
-          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x] + COLOR_BYTE;
+          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x] + 1;
           VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
         }
       }
@@ -639,7 +629,7 @@ void main(void) {
       run = false;
     }
     game_frame++;
-    burn();
+    //burn();
     wind_update();
     wind_sprite_update();
     bombs_blink();

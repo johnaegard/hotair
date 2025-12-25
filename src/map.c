@@ -1,3 +1,5 @@
+
+
 #include <cx16.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -113,7 +115,8 @@ unsigned int cells_processed =0;
 void map_setup(void) {
   printf("\nseeding map:  ");
 
-  VERA.address_hi = MAP0_ADDR | VERA_INC_1;
+  VERA.address_hi = (MAP0_ADDR >> 16) | VERA_INC_1;
+
   for (row = 0; row < MAP_HEIGHT_TILES; row++) {
     for (col = 0; col < MAP_WIDTH_TILES; col++) {
       if (rand() < ADJACENCY_CHANCE) {
@@ -163,12 +166,12 @@ void map_setup(void) {
           }
         }
         if (cell_connections_mask == 0) { 
-          tile_to_place = (rand() % NUM_VALID_MAP_TILES) + VALID_MAP_TILES_START_INDEX;
+          tile_to_place = (rand() % NUM_VALID_MAP_TILES);
         }
         else {
           tile_to_place = 255; 
           while (tile_to_place == 255) {
-            tile_to_place = (rand() % NUM_VALID_MAP_TILES) + VALID_MAP_TILES_START_INDEX;
+            tile_to_place = (rand() % NUM_VALID_MAP_TILES);
             if (tile_outs[tile_to_place] == 255) {
               tile_to_place = 255; // try again
             }
@@ -179,11 +182,11 @@ void map_setup(void) {
         }
       }
       else {
-        tile_to_place = (rand() % NUM_VALID_MAP_TILES) + VALID_MAP_TILES_START_INDEX;
+        tile_to_place = (rand() % NUM_VALID_MAP_TILES);
       }
 
       VERA.address = vera_tilemap_addr_offsets[row][col];
-      VERA.data0 = tile_to_place;  // space char
+      VERA.data0 = tile_to_place + VALID_MAP_TILES_START_INDEX;
       VERA.data0 = 0xBC; 
       cells_processed++;
       if (cells_processed % 2000 == 0) {

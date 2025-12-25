@@ -4,16 +4,6 @@
 #include <stdlib.h>
 #include "vera-util.h"
 
-// VERA LOAD ADDRESSES (from fire.c)
-#define MAP0_ADDR 0x0000
-#define MAP1_ADDR 0x2000
-#define NEEDLE_SPRITE_BITMAP_ADDR 0x6000
-#define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00
-#define FACE_SPRITE_BITMAP_ADDR 0x7000
-#define TILESET_ADDR 0x1F000
-
-#define SKIP_2_BYTE_HEADER 0
-
 unsigned char file_error_num=0;
 
 void uppercase_petscii_40x30(void) {
