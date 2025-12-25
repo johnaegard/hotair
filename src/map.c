@@ -184,7 +184,7 @@ void map_setup(void) {
 
       VERA.address = vera_tilemap_addr_offsets[row][col];
       VERA.data0 = tile_to_place;  // space char
-      VERA.data0 = 0x01; 
+      VERA.data0 = 0xBC; 
       cells_processed++;
       if (cells_processed % 2000 == 0) {
         // printf("%1c%1c%1c", 30, 0x63, 5);

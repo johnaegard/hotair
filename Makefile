@@ -39,17 +39,20 @@ petscii-dump:
 run-petscii-dump: petscii-dump
 	rm -f assets/PETSCII*.BIN && $(X16) -startin assets -prg build/PETSCIIDUMP.PRG -run -debug
 
-burning-petscii:
-	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
-
 display-tileset:
 	$(CC) -O -o build/DISPLAY-TILESET.PRG -t cx16 src/ancilliary/display-tileset.c src/vera-util.c
 
 run-display-tileset: display-tileset
 	cd assets && $(X16) -debug -prg ../build/DISPLAY-TILESET.PRG && cd -
 
-run-burning-petscii: burning-petscii
-	cd assets && $(X16) -debug -prg ../build/BURNING-PETSCII.PRG && cd -
+burning-petscii:
+	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
+
+distrib-burning-petscii: burning-petscii
+	cp build/BURNING-PETSCII.PRG distrib && cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
+
+run-burning-petscii: distrib-burning-petscii
+	cd distrib && $(X16) -debug -prg BURNING-PETSCII.PRG && cd -
 
 clean:
 	rm -f *.PRG build/*.PRG *.lbl build/*.lbl build/*.o
