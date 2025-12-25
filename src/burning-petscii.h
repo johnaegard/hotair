@@ -9,6 +9,8 @@ unsigned char fire_index_get(unsigned char row, unsigned char col);
 void fire_index_set(unsigned char row, unsigned char col, char value);
 unsigned char water_index_get(unsigned char row, unsigned char col);
 void water_index_set(unsigned char row, unsigned char col, char value);
+unsigned char map_tiles_index_get(unsigned char row, unsigned char col, unsigned char layer);
+void map_tiles_index_set(unsigned char row, unsigned char col, unsigned char layer, char value);
 void burn_out_tile(unsigned char y, unsigned char x);
 
 // VERA LOAD ADDRESSES
@@ -47,6 +49,9 @@ void burn_out_tile(unsigned char y, unsigned char x);
 
 #define BOMB_BANK 2
 #define BOMB_DATA_ADDRESS 0xA000  // banked ram window
+
+#define MAP_TILES_BANK 3
+#define MAP_TILES_DATA_ADDRESS 0xA000  // banked ram window
 
 // WIND
 #define WIND_CHANGE_CHANCE 750
@@ -93,6 +98,7 @@ extern unsigned char fire_colors[FIRE_COLOR_COMBINATIONS];
 extern char (*fire_index)[64];
 extern char (*water_index)[64];
 extern char (*bomb_index)[64];
+extern char (*map_tiles_index)[64][2];
 extern unsigned char bomb_colors[NUM_UXBOMB_FRAMES];
 extern unsigned char bomb_chars[NUM_UXBOMB_FRAMES];
 extern unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES];

@@ -1,3 +1,5 @@
+#include "map.h"
+
 #include <cx16.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,8 +7,6 @@
 #include "burning-petscii.h"
 #include "vera-util.h"
 
-#define TILE_TO_PETSCII_OFFSET 0x60
-#define VALID_MAP_TILES_START_INDEX 0x40
 #define NUM_VALID_MAP_TILES 64
 
 // L = left
@@ -138,11 +138,10 @@ void map_setup(void) {
           lookback_row = row + lookback[li][0];
           lookback_col = col + lookback[li][1];
           if (lookback_row < MAP_HEIGHT_TILES && lookback_col < MAP_WIDTH_TILES && lookback_row >= 0 && lookback_col >= 0) {
-            VERA.address = vera_tilemap_addr_offsets[lookback_row][lookback_col];
-            lookback_tile = VERA.data0 - VALID_MAP_TILES_START_INDEX;
-            // printf("lookback tile at (%d,%d): %x (%c) with tile_outs[%x]=%x\n",
-            // lookback_row, lookback_col, lookback_tile, lookback_tile + TILE_TO_PETSCII_OFFSET, lookback_tile,
-            // tile_outs[lookback_tile]);
+            // VERA.address = vera_tilemap_addr_offsets[lookback_row][lookback_col];
+            lookback_tile = map_tiles_index_get(lookback_row, lookback_col, 0);
+            // printf("lookback tile at (%d,%d): %x (%c) with tile_outs[%x]=%x\n", lookback_row, lookback_col, lookback_tile,
+            //        lookback_tile + TILE_TO_PETSCII_OFFSET, lookback_tile, tile_outs[lookback_tile]);
             if (li == 0) {  // top left neighbor
               if (tile_outs[lookback_tile] & BR) {
                 cell_connections_mask |= TL;
@@ -199,9 +198,16 @@ void map_setup(void) {
       }
 
       // printf("placing tile %x (%c)\n\n", tile_to_place, tile_to_place + TILE_TO_PETSCII_OFFSET);
-      VERA.address = vera_tilemap_addr_offsets[row][col];
-      VERA.data0 = tile_to_place + VALID_MAP_TILES_START_INDEX;
-      VERA.data0 = tile_color;
+      map_tiles_index_set(row, col, 0, tile_to_place);
+      map_tiles_index_set(row, col, 1, tile_color);
+
+      if (row == 0 && col == 0) {
+        printf("tile 0,0: %x/%x\n", map_tiles_index_get(row, col, 0), map_tiles_index_get(row, col, 1));
+      }
+
+      // VERA.address = vera_tilemap_addr_offsets[row][col];
+      // VERA.data0 = tile_to_place + VALID_MAP_TILES_START_INDEX;
+      // VERA.data0 = tile_color;
       cells_processed++;
       if (cells_processed % 2000 == 0) {
         // printf("%1c%1c%1c", 30, 0x63, 5);
