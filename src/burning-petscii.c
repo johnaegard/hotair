@@ -248,18 +248,19 @@ void fire_color_setup(void) {
 
 #define COLOR_BYTE 1
 
-void fire_setup(void) {
-  unsigned char c, r;
-  unsigned long addr;
-  unsigned char neighbor_count, pass;
-  unsigned int tiles_processed = 0;
-
-  // Precompute all address offsets
+void vera_tilemap_addr_offsets_setup(void) {
+  unsigned char r, c;
   for (r = 0; r < MAP_HEIGHT_TILES; r++) {
     for (c = 0; c < MAP_WIDTH_TILES; c++) {
       vera_tilemap_addr_offsets[r][c] = (2 * (r * MAP_WIDTH_TILES + c));
     }
   }
+}
+void fire_setup(void) {
+  unsigned char c, r;
+  unsigned long addr;
+  unsigned char neighbor_count, pass;
+  unsigned int tiles_processed = 0;
 
   // Initial random seeding - lower probability
   for (r = 0; r < 64; r++) {
@@ -617,14 +618,15 @@ void main(void) {
   uppercase_petscii_40x30();
   random_setup();
   vera_loads();
+  vera_tilemap_addr_offsets_setup();
   joy_install(cx16_std_joy);
   fire_color_setup();
+  map_setup();
   fire_setup();
   bombs_setup();
   people_setup(100);  // Place 100 people on the map
   wind_setup();
   wind_sprites_setup();
-  map_setup();
   vera_screen_setup();
   face_sprite_setup();
   mouse_setup();

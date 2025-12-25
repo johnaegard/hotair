@@ -1,19 +1,17 @@
 #include <cx16.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "burning-petscii.h"
 #include "vera-util.h"
 
 #define VALID_MAP_TILES_START_INDEX 64
 #define NUM_VALID_MAP_TILES 64
 
-#define ADJACENCY
-
 // L = left
 // R = right
 // T = top
 // B = bottom
 // M = middle
-
 #define TL 0b10000000
 #define TM 0b01000000
 #define TR 0b00100000
@@ -22,18 +20,17 @@
 #define BL 0b00000100
 #define BM 0b00000010
 #define BR 0b00000001
-// in is the OR of these
 
 unsigned char tile_outs[64] = {
     ML | MR,  // 0x40
-    0,       
+    255,       
     TM | BM, 
     ML | MR, 
-    0, 
-    0, 
-    0, 
-    0, 
-    0,
+    255, 
+    255, 
+    255, 
+    255,  
+    255,
     ML | BM,  // 0x49
     TM | MR,
     TM | ML,
@@ -43,33 +40,33 @@ unsigned char tile_outs[64] = {
     BL | ML | TL | TM | TR,
 
     TL | TM | TR | ML | BL, // 0x50
-    0,
-    0,
-    0,
-    0,
+    255,
+    255,
+    255,
+    255,
     BM | MR,  // 0x55
     TL | TR | BL | BR, // X
-    0,
-    0,
-    0,
-    0,
+    255,
+    255,
+    255,
+    255,
     TM | ML | MR | BM, // +-sign
-    0,
-    0,
-    0,
+    255,
+    255,
+    255,
     TL | TM | TR | ML | BL,  // 0x5F TOP RIGHT TRIANGLE
     
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    TL | BR, //0x66
+    255,
+    255,
     BR | MR | TR | TM | TR,  // 0x69 TOP LEFT TRIANGLE
-    0,
+    255,
     TM | MR | BM,
     BM | BR | MR,
     TM | MR,
@@ -110,9 +107,12 @@ unsigned char lookback_tile;
 unsigned char li;
 unsigned char cell_connections_mask;
 unsigned char tile_to_place;
+unsigned char row, col;
+unsigned int cells_processed =0;
 
 void map_setup(void) {
-  unsigned char row, col;
+  printf("\nseeding map:  ");
+
   VERA.address_hi = MAP0_ADDR | VERA_INC_1;
   for (row = 0; row < MAP_HEIGHT_TILES; row++) {
     for (col = 0; col < MAP_WIDTH_TILES; col++) {
@@ -169,7 +169,10 @@ void map_setup(void) {
           tile_to_place = 255; 
           while (tile_to_place == 255) {
             tile_to_place = (rand() % NUM_VALID_MAP_TILES) + VALID_MAP_TILES_START_INDEX;
-            if ((tile_outs[tile_to_place] & cell_connections_mask) == 0) {
+            if (tile_outs[tile_to_place] == 255) {
+              tile_to_place = 255; // try again
+            }
+            else if ((tile_outs[tile_to_place] & cell_connections_mask) == 0) {
               tile_to_place = 255; // try again
             }
           }
@@ -182,6 +185,10 @@ void map_setup(void) {
       VERA.address = vera_tilemap_addr_offsets[row][col];
       VERA.data0 = tile_to_place;  // space char
       VERA.data0 = 0x01; 
+      cells_processed++;
+      if (cells_processed % 2000 == 0) {
+        // printf("%1c%1c%1c", 30, 0x63, 5);
+      }
     }
   }
 }
