@@ -3,7 +3,8 @@
     "editorCursor.foreground": "#ffff00",
     "terminalCursor.foreground": "#ff3300"
 },
-"C_Cpp.default.compilerPath": "/usr/bin/gcc",
-"C_Cpp.errorSquiggles": "enabled",
-"markdown.preview.doubleClickToSwitchToEditor": false
+  "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+  "C_Cpp.errorSquiggles": "enabled",
+  "markdown.preview.doubleClickToSwitchToEditor": false,
+  "editor.tabSize": 2
 }

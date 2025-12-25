@@ -9,6 +9,7 @@
 #include "wait.h"
 #include "vera-util.h"
 #include "bomb.h"
+#include "map.h"
 #include "burning-petscii.h"
 
 // GLOBAL VARIABLE DEFINITIONS
@@ -179,7 +180,7 @@ VERA.display.video =
 }
 void vera_loads(void) {
   printf("loading vera\n");
-  load_into_vera("map0.bin", MAP0_ADDR, SKIP_2_BYTE_HEADER);
+//  load_into_vera("map0.bin", MAP0_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("map1.bin", MAP1_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("sprite1.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
@@ -244,6 +245,9 @@ void fire_color_setup(void) {
     }
   }
 }
+
+#define COLOR_BYTE 1
+
 void fire_setup(void) {
   unsigned char c, r;
   unsigned long addr;
@@ -251,9 +255,9 @@ void fire_setup(void) {
   unsigned int tiles_processed = 0;
 
   // Precompute all address offsets
-  for (r = 0; r < 64; r++) {
-    for (c = 0; c < 64; c++) {
-      vera_tilemap_addr_offsets[r][c] = 1 + (2 * (r * MAP_WIDTH_TILES + c));
+  for (r = 0; r < MAP_HEIGHT_TILES; r++) {
+    for (c = 0; c < MAP_WIDTH_TILES; c++) {
+      vera_tilemap_addr_offsets[r][c] = (2 * (r * MAP_WIDTH_TILES + c));
     }
   }
 
@@ -347,12 +351,12 @@ void fire_setup(void) {
   for (r = 0; r < 64; r++) {
     for (c = 0; c < 64; c++) {
       if (fire_index_get(r, c) < NO_FIRE_MAGIC_VALUE) {
-        addr = vera_tilemap_addr_offsets[r][c];
+        addr = vera_tilemap_addr_offsets[r][c] + COLOR_BYTE;
         VERA.address = addr;
         VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
       }
       if (water_index_get(r, c) > 0) {
-        VERA.address = vera_tilemap_addr_offsets[r][c];
+        VERA.address = vera_tilemap_addr_offsets[r][c] + COLOR_BYTE;
         VERA.data0 = 0x60;
       }
     }
@@ -361,11 +365,11 @@ void fire_setup(void) {
 void burn_out_tile(unsigned char y, unsigned char x) {
   fire_index_set(y, x, BURNT_OUT);
   if ((rand() < BURNT_OUT_CRUMBLE_TILE_CHANCE)) {
-    VERA.address = vera_tilemap_addr_offsets[y][x] - 1;
+    VERA.address = vera_tilemap_addr_offsets[y][x];
     VERA.data0 = 0x66;
   }
   else {
-    VERA.address = vera_tilemap_addr_offsets[y][x];
+    VERA.address = vera_tilemap_addr_offsets[y][x] + COLOR_BYTE;
   }
   VERA.data0 = 0xB0;
 }
@@ -409,7 +413,7 @@ void burn() {
     // 
     // YOU TWINKLE
     //
-    VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
+    VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x] + COLOR_BYTE;
     VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
 
     //
@@ -425,7 +429,7 @@ void burn() {
         }
         else if (fire_index_get(spread_y, spread_x) == NO_FIRE_MAGIC_VALUE) {
           fire_index_set(spread_y, spread_x, FIRE_DURATION);
-          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x];
+          VERA.address = vera_tilemap_addr_offsets[spread_y][spread_x] + COLOR_BYTE;
           VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
         }
       }
@@ -516,12 +520,12 @@ void people_setup(unsigned int num_people) {
 
     if (people_count < MAX_PEOPLE) {
       // Read and save the current tile character and color
-      VERA.address = vera_tilemap_addr_offsets[person_y][person_x] - 1;
+      VERA.address = vera_tilemap_addr_offsets[person_y][person_x];
       people_pool[people_count].backed_char = VERA.data0;
       people_pool[people_count].backed_color = VERA.data0;
 
       // Write tile 129 at this location
-      VERA.address = vera_tilemap_addr_offsets[person_y][person_x] - 1;
+      VERA.address = vera_tilemap_addr_offsets[person_y][person_x];
       VERA.data0 = 0x81;  // tile 129 (0x81 in hex)
       VERA.data0 = 0x21;  
 
@@ -556,17 +560,17 @@ void people_move(void) {
   VERA.address_hi = 0 | VERA_INC_1;
 
   // restore old position with backed-up tile
-  VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x] - 1;
+  VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x];
   VERA.data0 = people_pool[pm_idx].backed_char;
   VERA.data0 = people_pool[pm_idx].backed_color;
 
   // read and save tile at new location before overwriting
-  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx] - 1;
+  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
   people_pool[pm_idx].backed_char = VERA.data0;
   people_pool[pm_idx].backed_color = VERA.data0;
 
   // draw person at new location
-  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx] - 1;
+  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
   VERA.data0 = 0x81;
   VERA.data0 = 0x21;
 
@@ -620,6 +624,7 @@ void main(void) {
   people_setup(100);  // Place 100 people on the map
   wind_setup();
   wind_sprites_setup();
+  map_setup();
   vera_screen_setup();
   face_sprite_setup();
   mouse_setup();

@@ -33,7 +33,7 @@ void bombs_setup(void) {
     bomb_pool[b].exploding = false;
     bomb_pool[b].unexploded = true;
 
-    VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x] - 1;
+    VERA.address = vera_tilemap_addr_offsets[bomb_y][bomb_x];
     VERA.data0 = bomb_chars[0];
     VERA.data0 = bomb_colors[0];
   }
@@ -43,7 +43,7 @@ void bombs_blink(void) {
   VERA.address_hi = 0 | VERA_INC_1;
 
   if (bomb_pool[b].unexploded) {
-    VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x] - 1;
+    VERA.address = vera_tilemap_addr_offsets[bomb_pool[b].y][bomb_pool[b].x];
     VERA.data0 = bomb_chars[bomb_pool[b].frame % NUM_UXBOMB_FRAMES];
     if (fire_index_get(bomb_pool[b].y, bomb_pool[b].x) < NO_FIRE_MAGIC_VALUE) {
     }
@@ -90,8 +90,8 @@ void bombs_explode() {
 
         // if the bomb is still exploding, paint leading edge of explosion
         if (bomb_pool[b].exploding && bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
-          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
-          VERA.data0 = 0x11;
+          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] +1;
+          VERA.data0 = 0x01;
         }
 
         // trailing edge of explosion
@@ -116,7 +116,7 @@ void bombs_explode() {
           // sometimes flatten land tiles
           if (water_index_get(exp_y, exp_x) == 0) {
             if (rand() < EXPLOSION_FLATTEN_CHANCE) {
-              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] - 1;
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
               VERA.data0 = 0x66;
             }
           }
@@ -125,7 +125,7 @@ void bombs_explode() {
           if (fire_index_get(exp_y, exp_x) == NO_FIRE_MAGIC_VALUE) {
             if (rand() < EXPLOSION_IGNITE_CHANCE) {
               fire_index_set(exp_y, exp_x, FIRE_DURATION);
-              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] + 1;
               VERA.data0 = fire_colors[rand() % FIRE_COLOR_COMBINATIONS];
               continue;
             }
@@ -138,7 +138,7 @@ void bombs_explode() {
               continue;
             }
           }
-          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] + 1;
           VERA.data0 = 0x90;
         }
       }

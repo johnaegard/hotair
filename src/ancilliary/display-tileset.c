@@ -39,6 +39,7 @@ void setup_tilemap(void)
   VERA.data0 = 0x00;
   VERA.data0 = 0x00;
 
+  // column labels
   for (y = 0; y <= 16; y++){
     if (y == 0) {
       VERA.data0 = 0x00;
@@ -50,16 +51,17 @@ void setup_tilemap(void)
     }
     else{
       VERA.data0 = y - 10;
-    VERA.data0 = 0x07;
+      VERA.data0 = 0x07;
     }
     VERA.data0 = 0x00;
     VERA.data0 = 0x00;
   }
 
-  // Create a 16x16 matrix of tiles (0-255)
-  for (y = 0; y < 16; y++){
-    VERA.address = TILEMAP_VERA_ADDR + (128 * (y + 2));
 
+  for (y = 0; y < 8; y++){
+    VERA.address = TILEMAP_VERA_ADDR + (128 * (y * 2 + 2));
+
+    // row label
     VERA.data0 = 0x24;
     VERA.data0 = 0x07;
 
@@ -73,6 +75,7 @@ void setup_tilemap(void)
     VERA.data0 = 0x30;
     VERA.data0 = 0x07;
 
+    // space
     VERA.data0 = 0x00;
     VERA.data0 = 0x00;
 

@@ -1,0 +1,1 @@
+void map_setup(void);

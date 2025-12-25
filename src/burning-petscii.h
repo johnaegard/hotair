@@ -2,6 +2,7 @@
 #define BURNING_PETSCII_H
 
 #include <stdbool.h>
+#include "bomb.h"
 
 // Forward declarations
 unsigned char fire_index_get(unsigned char row, unsigned char col);
@@ -20,6 +21,7 @@ void burn_out_tile(unsigned char y, unsigned char x);
 #define SPRITE_ATTR_ADDR 0x1FC08
 
 #define MAP_WIDTH_TILES 64
+#define MAP_HEIGHT_TILES 64
 
 // FIRE APPEARANCE
 #define FIRE_NUM_BG_COLORS 4

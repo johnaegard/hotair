@@ -40,7 +40,7 @@ run-petscii-dump: petscii-dump
 	rm -f assets/PETSCII*.BIN && $(X16) -startin assets -prg build/PETSCIIDUMP.PRG -run -debug
 
 burning-petscii:
-	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c
+	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
 
 display-tileset:
 	$(CC) -O -o build/DISPLAY-TILESET.PRG -t cx16 src/ancilliary/display-tileset.c src/vera-util.c
