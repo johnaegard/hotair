@@ -12,9 +12,6 @@
 #include "map.h"
 #include "burning-petscii.h"
 
-// GLOBAL VARIABLE DEFINITIONS
-unsigned char fire_bgcolors[FIRE_NUM_BG_COLORS] = { 0x20, 0x70, 0x80, 0xA0 };
-unsigned char fire_fgcolors[FIRE_NUM_FG_COLORS] = { 0x00, 0x01 };
 unsigned char fire_colors[FIRE_COLOR_COMBINATIONS] = 
 {0x22, 0x77, 0x88, 0XAA, 0x22, 0x77, 0x88, 0XAA, 0x77, 0x87, 0XA7, 0x71, 0x81, 0xA1, 0x77, 0x88, 0x77, 0x88};
 
@@ -99,7 +96,6 @@ unsigned int people_count = 0;
 const signed char people_dx[8] = { -1, 0, 1, -1, 1, -1, 0, 1 };
 const signed char people_dy[8] = {  1, 1, 1,  0, 0, -1, -1, -1 };
 
-/* globals used by people_move to avoid function-local variables */
 unsigned int pm_idx;
 signed char pm_dir;
 signed char pm_nx;
@@ -611,14 +607,14 @@ void main(void) {
   joy_install(cx16_std_joy);
   fire_color_setup();
   map_setup();
-  fire_setup();
-  bombs_setup();
-  people_setup(100);  // Place 100 people on the map
+//  fire_setup();
+//  bombs_setup();
+//  people_setup(100);  // Place 100 people on the map
   wind_setup();
   wind_sprites_setup();
   vera_screen_setup();
-  face_sprite_setup();
-  mouse_setup();
+//  face_sprite_setup();
+  // mouse_setup();
 
   start_time = clock();
 
@@ -632,9 +628,9 @@ void main(void) {
     //burn();
     wind_update();
     wind_sprite_update();
-    bombs_blink();
-    bombs_explode();
-    people_move();
+//    bombs_blink();
+//    bombs_explode();
+//    people_move();
     wait();
   }
 

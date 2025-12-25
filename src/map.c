@@ -1,12 +1,12 @@
-
-
 #include <cx16.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 #include "burning-petscii.h"
 #include "vera-util.h"
 
-#define VALID_MAP_TILES_START_INDEX 64
+#define TILE_TO_PETSCII_OFFSET 0x60
+#define VALID_MAP_TILES_START_INDEX 0x40
 #define NUM_VALID_MAP_TILES 64
 
 // L = left
@@ -23,16 +23,19 @@
 #define BM 0b00000010
 #define BR 0b00000001
 
+// clang-format off
 unsigned char tile_outs[64] = {
-    ML | MR,  // 0x40
-    255,       
-    TM | BM, 
-    ML | MR, 
-    255, 
-    255, 
-    255, 
-    255,  
-    255,
+
+    // 0x40
+    ML | MR,
+    0,
+    TM | BM,
+    ML | MR,
+    0,
+    0,
+    0,
+    0,
+    0,
     ML | BM,  // 0x49
     TM | MR,
     TM | ML,
@@ -41,60 +44,61 @@ unsigned char tile_outs[64] = {
     BR | TL,
     BL | ML | TL | TM | TR,
 
-    TL | TM | TR | ML | BL, // 0x50
-    255,
-    255,
-    255,
-    255,
+    // 0x50
+    TL | TM | TR | ML | BL,
+    0,
+    0,
+    0,
+    0,
     BM | MR,  // 0x55
-    TL | TR | BL | BR, // X
-    255,
-    255,
-    255,
-    255,
-    TM | ML | MR | BM, // +-sign
-    255,
-    255,
-    255,
+    TL | TR | BL | BR,  // X
+    0,
+    0,
+    0,
+    0,
+    TM | ML | MR | BM,  // +-sign
+    0,
+    0,
+    0,
     TL | TM | TR | ML | BL,  // 0x5F TOP RIGHT TRIANGLE
-    
-    255,
-    255,
-    255,
-    255,
-    255,
-    255,
-    TL | BR, //0x66
-    255,
-    255,
+
+    // 0x60
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    TL | BR,  // 0x66
+    0,
+    0,
     BR | MR | TR | TM | TR,  // 0x69 TOP LEFT TRIANGLE
-    255,
+    0,
     TM | MR | BM,
     BM | BR | MR,
-    TM | MR,
-    ML | BM,
+    TM | MR,  // 0x6D
+    ML | BM,  // 0x6E
     BL | BM | BR,  // 0x6F
 
-    BM | MR, 
+    //0x70
+    BM | MR,
     MR | TM | MR,
     MR | BM | MR,
     ML | TM | BM,
     TR | MR | BR,
-    TR | MR | BR,
-    TL | ML | BL, // 0x76
-    TL | TM | TR, 
-    TL | TM | TR, 
+    TL | ML | BL,  // 0x75
+    TR | MR | BR,  // 0x76
+    TL | TM | TR,
+    TL | TM | TR,
     BL | BM | BR,
     BL | BM | BR | MR | TR,  // 0x7A
     ML | BL | BM,
     TM | TR | MR,
-    ML | TM, 
+    ML | TM,
     ML | TL | TM,
-    ML | TL | TM | MR | BR | BM // 0x7F
+    ML | TL | TM | MR | BR | BM  // 0x7F
 };
-
-#define ADJACENCY_CHANCE 32000
-#define NUM_LOOKBACKS 4
+// clang-format on
 
 signed char lookback[4][2] = {
     {-1, -1},  // up-left
@@ -110,84 +114,94 @@ unsigned char li;
 unsigned char cell_connections_mask;
 unsigned char tile_to_place;
 unsigned char row, col;
-unsigned int cells_processed =0;
+unsigned int cells_processed = 0;
+unsigned char tile_color = 0xBC;
+
+#define ADJACENCY_CHANCE (RAND_MAX / 100 * 95)
+#define NUM_LOOKBACKS 4
 
 void map_setup(void) {
-  printf("\nseeding map:  ");
+  printf("\nseeding map:  \n");
 
   VERA.address_hi = (MAP0_ADDR >> 16) | VERA_INC_1;
 
   for (row = 0; row < MAP_HEIGHT_TILES; row++) {
     for (col = 0; col < MAP_WIDTH_TILES; col++) {
-      if (rand() < ADJACENCY_CHANCE) {
-
+      tile_color = 0xBC;
+      if (rand() > ADJACENCY_CHANCE) {
+        tile_to_place = (rand() % NUM_VALID_MAP_TILES);
+        // tile_color = 0x50;
+      } else {
         // compute the connections mask of the cell we are filling
         cell_connections_mask = 0;
         for (li = 0; li < NUM_LOOKBACKS; li++) {
           lookback_row = row + lookback[li][0];
           lookback_col = col + lookback[li][1];
-          if (lookback_row < MAP_HEIGHT_TILES &&
-              lookback_col < MAP_WIDTH_TILES && lookback_row >= 0 &&
-              lookback_col >= 0) {
+          if (lookback_row < MAP_HEIGHT_TILES && lookback_col < MAP_WIDTH_TILES && lookback_row >= 0 && lookback_col >= 0) {
             VERA.address = vera_tilemap_addr_offsets[lookback_row][lookback_col];
             lookback_tile = VERA.data0 - VALID_MAP_TILES_START_INDEX;
+            // printf("lookback tile at (%d,%d): %x (%c) with tile_outs[%x]=%x\n",
+            // lookback_row, lookback_col, lookback_tile, lookback_tile + TILE_TO_PETSCII_OFFSET, lookback_tile,
+            // tile_outs[lookback_tile]);
             if (li == 0) {  // top left neighbor
-              if (tile_outs[lookback_tile] && BR) {
+              if (tile_outs[lookback_tile] & BR) {
                 cell_connections_mask |= TL;
               }
-            }
-            else if ( li == 1) { // top center neighbor
-              if (tile_outs[lookback_tile] && BL) {
+              // printf("TL neighbor connection mask now %x\n", cell_connections_mask);
+            } else if (li == 1) {  // top center neighbor
+              if (tile_outs[lookback_tile] & BL) {
                 cell_connections_mask |= TL;
               }
-              if (tile_outs[lookback_tile] && BM) {
+              if (tile_outs[lookback_tile] & BM) {
                 cell_connections_mask |= TM;
               }
-              if (tile_outs[lookback_tile] && BR) {
+              if (tile_outs[lookback_tile] & BR) {
                 cell_connections_mask |= TR;
               }
-            }
-            else if ( li == 2) { // top right neighbor
-              if (tile_outs[lookback_tile] && BL) {
-                cell_connections_mask |=TR;
+              // printf("TC neighbor connection mask now %x\n", cell_connections_mask);
+            } else if (li == 2) {  // top right neighbor
+              if (tile_outs[lookback_tile] & BL) {
+                cell_connections_mask |= TR;
               }
-            }
-            else if (li == 3 ) { // left neighbor
-              if (tile_outs[lookback_tile] && TR) {
+              // printf("TR neighbor connection mask now %x\n", cell_connections_mask);
+            } else if (li == 3) {  // left neighbor
+              if (tile_outs[lookback_tile] & TR) {
+                // printf("tr ...");
                 cell_connections_mask |= TL;
               }
-              if (tile_outs[lookback_tile] && MR) {
+              if (tile_outs[lookback_tile] & MR) {
+                // printf("mr ...");
                 cell_connections_mask |= ML;
               }
-              if (tile_outs[lookback_tile] && BR) {
+              if (tile_outs[lookback_tile] & BR) {
+                // printf("tr ...");
                 cell_connections_mask |= BL;
               }
+              // printf("left neighbor connection mask now %x\n", cell_connections_mask);
             }
           }
         }
-        if (cell_connections_mask == 0) { 
+        // printf("cell (%d,%d) connections mask: %x\n", row, col, cell_connections_mask);
+        if (cell_connections_mask == 0) {
           tile_to_place = (rand() % NUM_VALID_MAP_TILES);
-        }
-        else {
-          tile_to_place = 255; 
+          tile_color = 0x04;
+        } else {
+          tile_to_place = 255;
           while (tile_to_place == 255) {
             tile_to_place = (rand() % NUM_VALID_MAP_TILES);
-            if (tile_outs[tile_to_place] == 255) {
-              tile_to_place = 255; // try again
-            }
-            else if ((tile_outs[tile_to_place] & cell_connections_mask) == 0) {
-              tile_to_place = 255; // try again
+            if (tile_outs[tile_to_place] == 0) {
+              tile_to_place = 255;  // try again
+            } else if ((tile_outs[tile_to_place] & cell_connections_mask) == 0) {
+              tile_to_place = 255;  // try again
             }
           }
         }
       }
-      else {
-        tile_to_place = (rand() % NUM_VALID_MAP_TILES);
-      }
 
+      // printf("placing tile %x (%c)\n\n", tile_to_place, tile_to_place + TILE_TO_PETSCII_OFFSET);
       VERA.address = vera_tilemap_addr_offsets[row][col];
       VERA.data0 = tile_to_place + VALID_MAP_TILES_START_INDEX;
-      VERA.data0 = 0xBC; 
+      VERA.data0 = tile_color;
       cells_processed++;
       if (cells_processed % 2000 == 0) {
         // printf("%1c%1c%1c", 30, 0x63, 5);

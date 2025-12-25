@@ -7,7 +7,7 @@
 
 #define TILESET_VERA_ADDR 0x1F000
 #define TILEMAP_VERA_ADDR 0x0000UL
-#define TILESET_FILE "petscii.bin"
+#define TILESET_FILE "tiles.bin"
 
 void load_tileset_to_vera(void)
 {

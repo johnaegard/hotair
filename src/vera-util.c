@@ -9,7 +9,7 @@ unsigned char file_error_num=0;
 void uppercase_petscii_40x30(void) {
   asm("lda #2");
   asm("jsr $FF62");
-  videomode(3);
+  videomode(1);
 }
 
 void load_into_vera(char* filename, unsigned long base_addr, char secondary_address) {
