@@ -51,7 +51,7 @@ burning-petscii:
 distrib-burning-petscii: burning-petscii
 	mkdir -p distrib && \
 	cp build/burning-petscii.prg distrib && \
-	cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
+	cp assets/face.bin assets/tiles.bin assets/overlay.bin assets/needle.bin assets/circle.bin distrib
 
 run-burning-petscii: distrib-burning-petscii
 	cd distrib && $(X16) -debug -prg burning-petscii.prg && cd -

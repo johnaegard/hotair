@@ -179,13 +179,12 @@ VERA.display.video =
   VERA.layer1.vscroll = 0;
 }
 void vera_loads(void) {
-  printf("loading vera\n");
-//  load_into_vera("map0.bin", MAP0_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("map1.bin", MAP1_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("sprite1.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
+  printf("loading\n");
+  load_into_vera("overlay.bin", MAP1_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("needle.bin", NEEDLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("circle.bin", CIRCLE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
   load_into_vera("face.bin", FACE_SPRITE_BITMAP_ADDR, SKIP_2_BYTE_HEADER);
-  load_into_vera("petscii.bin", TILESET_ADDR, SKIP_2_BYTE_HEADER);
+  load_into_vera("tiles.bin", TILESET_ADDR, SKIP_2_BYTE_HEADER);
 
   // load_into_vera("sprite0.bin", SHIP_SPRITE_BASE_ADDR, SKIP_2_BYTE_HEADER);
   // load_into_vera("monoplane16.bin", MONOPLANE_SPRITE_BASE_ADDR, NO_2_BYTE_HEADER);
