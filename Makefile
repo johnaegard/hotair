@@ -46,13 +46,13 @@ run-display-tileset: display-tileset
 	cd assets && $(X16) -debug -prg ../build/DISPLAY-TILESET.PRG && cd -
 
 burning-petscii:
-	$(CC) -O -o build/BURNING-PETSCII.PRG -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
+	$(CC) -O -o build/burning-petscii.prg -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
 
 distrib-burning-petscii: burning-petscii
-	cp build/BURNING-PETSCII.PRG distrib && cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
+	cp build/burning-petscii.prg distrib && cp assets/face.bin assets/PETSCII.BIN assets/map1.bin assets/sprite1.bin assets/circle.bin distrib
 
 run-burning-petscii: distrib-burning-petscii
-	cd distrib && $(X16) -debug -prg BURNING-PETSCII.PRG && cd -
+	cd distrib && $(X16) -debug -prg burning-petscii.prg && cd -
 
 clean:
-	rm -f *.PRG build/*.PRG *.lbl build/*.lbl build/*.o
+	rm -f *.PRG build/*.PRG *.lbl build/*.lbl build/*.o distrib/*
