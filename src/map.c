@@ -121,8 +121,8 @@ unsigned char tile_color = 0xBC;
 #define NUM_LOOKBACKS 4
 
 void map_setup(void) {
-  printf("\nseeding map:  \n");
-
+  printf("\nmap  %1c%1c", 30, PROGRESS_BAR_START_CHAR);
+ 
   VERA.address_hi = (MAP0_ADDR >> 16) | VERA_INC_1;
 
   for (row = 0; row < MAP_HEIGHT_TILES; row++) {
@@ -197,21 +197,13 @@ void map_setup(void) {
         }
       }
 
-      // printf("placing tile %x (%c)\n\n", tile_to_place, tile_to_place + TILE_TO_PETSCII_OFFSET);
       map_tiles_index_set(row, col, 0, tile_to_place);
       map_tiles_index_set(row, col, 1, tile_color);
-
-      if (row == 0 && col == 0) {
-        printf("tile 0,0: %x/%x\n", map_tiles_index_get(row, col, 0), map_tiles_index_get(row, col, 1));
-      }
-
-      // VERA.address = vera_tilemap_addr_offsets[row][col];
-      // VERA.data0 = tile_to_place + VALID_MAP_TILES_START_INDEX;
-      // VERA.data0 = tile_color;
       cells_processed++;
-      if (cells_processed % 2000 == 0) {
-        // printf("%1c%1c%1c", 30, 0x63, 5);
+      if (cells_processed % 165 == 0) {
+        printf("%1c%1c%1c", 30, PROGRESS_BAR_CHAR, 5);
       }
     }
   }
+  printf("%1c%1c%1c", 30, PROGRESS_BAR_END_CHAR, 5);
 }

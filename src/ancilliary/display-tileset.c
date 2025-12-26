@@ -58,7 +58,7 @@ void setup_tilemap(void)
   }
 
 
-  for (y = 0; y < 8; y++){
+  for (y = 0; y < 9; y++){
     VERA.address = TILEMAP_VERA_ADDR + (128 * (y * 2 + 2));
 
     // row label

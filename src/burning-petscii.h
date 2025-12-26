@@ -69,6 +69,12 @@ void burn_out_tile(unsigned char y, unsigned char x);
 // PEOPLE
 #define MAX_PEOPLE 50
 
+// FROU-FROU
+#define PROGRESS_BAR_CHAR 0x5F
+#define PROGRESS_BAR_START_CHAR 0x5E
+#define PROGRESS_BAR_END_CHAR 0x5C
+#define HEADER_FMT_TEMPLATE "%-7s"
+
 // TYPE DEFINITIONS
 typedef struct {
   unsigned char flips;

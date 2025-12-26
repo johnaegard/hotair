@@ -223,7 +223,6 @@ void vera_tilemap_addr_offsets_setup(void) {
 }
 void fire_setup(void) {
   unsigned char c, r;
-  unsigned long addr;
   unsigned char neighbor_count, pass;
   unsigned int tiles_processed = 0;
 
@@ -243,7 +242,7 @@ void fire_setup(void) {
     }
   }
 
-  printf("\nseeding water:");
+  printf("\nwater%1c%1c%1c", 30, PROGRESS_BAR_START_CHAR, 5);
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
@@ -277,15 +276,15 @@ void fire_setup(void) {
             }
           }
         }
-        if (tiles_processed++ % 1000 == 0) {
-          printf("%1c%1c%1c", 30, 0x63, 5);
+        if (tiles_processed++ % 500 == 0) {
+          printf("%1c%1c%1c", 30, PROGRESS_BAR_CHAR, 5);
         }
       }
     }
   }
-
+  printf("%1c%1c%1c", 30, PROGRESS_BAR_END_CHAR, 5);
   tiles_processed = 0;
-  printf("\nseeding fire: ");
+  printf("\nfires%1c%1c%1c", 30, PROGRESS_BAR_START_CHAR, 5);
 
   for (pass = 0; pass < 3; pass++) {
     for (r = 1; r < 63; r++) {  // Skip edges to avoid boundary checks
@@ -319,12 +318,13 @@ void fire_setup(void) {
             }
           }
         }
-        if (tiles_processed++ % 1000 == 0) {
-          printf("%1c%1c%1c", 30, 0x63, 5);
+        if (tiles_processed++ % 500 == 0) {
+          printf("%1c%1c%1c", 30, PROGRESS_BAR_CHAR, 5);
         }
       }
     }
   }
+  printf("%1c%1c%1c", 30, PROGRESS_BAR_END_CHAR, 5);
 }
 void burn_out_tile(unsigned char y, unsigned char x) {
   fire_index_set(y, x, BURNT_OUT);
