@@ -521,13 +521,8 @@ void people_move(void) {
 
   // restore old position with backed-up tile
   VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x];
-  VERA.data0 = people_pool[pm_idx].backed_char;
-  VERA.data0 = people_pool[pm_idx].backed_color;
-
-  // read and save tile at new location before overwriting
-  VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
-  people_pool[pm_idx].backed_char = VERA.data0;
-  people_pool[pm_idx].backed_color = VERA.data0;
+  VERA.data0 = map_tiles_index_get(people_pool[pm_idx].y, people_pool[pm_idx].x, 0) + VALID_MAP_TILES_START_INDEX;
+  VERA.data0 = map_tiles_index_get(people_pool[pm_idx].y, people_pool[pm_idx].x, 1);
 
   // draw person at new location
   VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
