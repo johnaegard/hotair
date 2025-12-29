@@ -21,9 +21,10 @@ char (*fire_index)[64] = (char (*)[64])FIRE_DATA_ADDRESS;
 char (*water_index)[64] = (char (*)[64])WATER_DATA_ADDRESS;
 char (*bomb_index)[64] = (char (*)[64])BOMB_DATA_ADDRESS;
 char (*map_tiles_index)[64][2] = (char (*)[64][2])MAP_TILES_DATA_ADDRESS;
+unsigned char (*people_index)[64] = (unsigned char (*)[64])PEOPLE_INDEX_DATA_ADDRESS;
 
-unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x00, 0x01, 0x00, 0x03};
-unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
+unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x20, 0x03, 0x20, 0x0D};
+unsigned char bomb_chars[NUM_UXBOMB_FRAMES]  = {0x00, 0x57, 0x00, 0x5A};
 unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
     {// FRAME 0
      {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -182,6 +183,15 @@ unsigned char map_tiles_index_get(unsigned char row, unsigned char col, unsigned
 void map_tiles_index_set(unsigned char row, unsigned char col, unsigned char layer, char value) {
   BANK_NUM = MAP_TILES_BANK;
   map_tiles_index[row][col][layer] = value;
+}
+
+unsigned char people_index_get(unsigned char row, unsigned char col) {
+  BANK_NUM = PEOPLE_BANK;
+  return people_index[row][col];
+}
+void people_index_set(unsigned char row, unsigned char col, unsigned char person_id) {
+  BANK_NUM = PEOPLE_BANK;
+  people_index[row][col] = person_id;
 }
 
 // SPRITES
@@ -458,12 +468,20 @@ void face_sprite_setup(void) {
 
 // PEOPLE
 void people_setup(unsigned int num_people) {
+  unsigned char r, c;
   unsigned char person_x, person_y;
   unsigned int placed = 0;
 
   VERA.address_hi = 0 | VERA_INC_1;
 
   people_count = 0;
+
+  // Initialize people_index to NO_PERSON_INDEX
+  for (r = 0; r < 64; r++) {
+    for (c = 0; c < 64; c++) {
+      people_index_set(r, c, NO_PERSON_INDEX);
+    }
+  }
 
   while (placed < num_people) {
     person_x = rand() & 0x3F;  // 0-63
@@ -488,6 +506,10 @@ void people_setup(unsigned int num_people) {
       people_pool[people_count].x = person_x;
       people_pool[people_count].y = person_y;
       people_pool[people_count].alive = 1;
+      
+      // Update people_index to track this person's location
+      people_index_set(person_y, person_x, people_count);
+      
       people_count++;
     }
 
@@ -517,6 +539,10 @@ void people_move(void) {
   if (water_index_get(pm_ny, pm_nx) > 0)
     return;
 
+  // Don't move on top of another person
+  if (people_index_get(pm_ny, pm_nx) != NO_PERSON_INDEX)
+    return;
+
   VERA.address_hi = 0 | VERA_INC_1;
 
   // restore old position with backed-up tile
@@ -528,6 +554,10 @@ void people_move(void) {
   VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
   VERA.data0 = 0x81;
   VERA.data0 = 0x21;
+
+  // update people_index: clear old position, set new position
+  people_index_set(people_pool[pm_idx].y, people_pool[pm_idx].x, NO_PERSON_INDEX);
+  people_index_set(pm_ny, pm_nx, pm_idx);
 
   // update pool
   people_pool[pm_idx].x = pm_nx;

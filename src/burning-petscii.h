@@ -53,6 +53,10 @@ void burn_out_tile(unsigned char y, unsigned char x);
 #define MAP_TILES_BANK 3
 #define MAP_TILES_DATA_ADDRESS 0xA000  // banked ram window
 
+#define PEOPLE_BANK 4
+#define PEOPLE_INDEX_DATA_ADDRESS 0xA000  // banked ram window
+#define NO_PERSON_INDEX 255
+
 // WIND
 #define WIND_CHANGE_CHANCE 750
 #define WIND_DIRECTIONS 24
@@ -105,6 +109,7 @@ extern char (*fire_index)[64];
 extern char (*water_index)[64];
 extern char (*bomb_index)[64];
 extern char (*map_tiles_index)[64][2];
+extern unsigned char (*people_index)[64];
 extern unsigned char bomb_colors[NUM_UXBOMB_FRAMES];
 extern unsigned char bomb_chars[NUM_UXBOMB_FRAMES];
 extern unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES];
