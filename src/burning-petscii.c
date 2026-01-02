@@ -348,6 +348,7 @@ void burn_out_tile(unsigned char y, unsigned char x) {
 }
 void burn() {
   unsigned char bomb_id;
+  unsigned char person_id;
 
   VERA.address_hi = 0 | VERA_INC_1;
 
@@ -373,6 +374,17 @@ void burn() {
     bomb_id = bomb_index_get(rand_y, rand_x);
     if (rand() < BOMB_BURNING_DETONATION_CHANCE) {
       detonate_bomb(bomb_id);
+    }
+
+    //
+    // FIRE KILLS PEOPLE
+    //
+    person_id = people_index_get(rand_y, rand_x);
+    if (person_id != NO_PERSON_INDEX && people_pool[person_id].alive) {
+      people_pool[person_id].alive = 0;
+      VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
+      VERA.data0 = 0x82;
+      VERA.data0 = 0x21;
     }
 
     //
@@ -522,7 +534,7 @@ void people_move(void) {
   unsigned char min_fire_score;
   unsigned char check_range;
   unsigned char dir, i;
-
+  unsigned char person_tile;
   unsigned char fire_score;
 
   if (people_count == 0)
@@ -534,8 +546,12 @@ void people_move(void) {
     current_person++;
   }
 
-  if (!people_pool[current_person].alive)
+  if (!people_pool[current_person].alive){
+    VERA.address = vera_tilemap_addr_offsets[people_pool[current_person].y][people_pool[current_person].x];
+    VERA.data0 = 0x82;
+    VERA.data0 = 0x21;
     return;
+  }
 
   // Check for nearby fire and find best escape direction
   px = people_pool[current_person].x;
@@ -602,7 +618,8 @@ void people_move(void) {
 
   // draw person at new location
   VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
-  VERA.data0 = 0x81;
+  person_tile = people_pool[current_person].alive ? 0x81 : 0x82;
+  VERA.data0 = person_tile;
   VERA.data0 = 0x21;
 
   // update people_index: clear old position, set new position
