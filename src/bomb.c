@@ -118,6 +118,7 @@ void bombs_explode() {
             if (rand() < EXPLOSION_FLATTEN_CHANCE) {
               VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
               VERA.data0 = 0x66;
+              map_tiles_index_set(exp_y, exp_x, 0, 0x66);  // set to flat land
             }
           }
 
@@ -140,6 +141,7 @@ void bombs_explode() {
           }
           VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] + 1;
           VERA.data0 = 0x90;
+          map_tiles_index_set(exp_y, exp_x, 1, 0x90); 
         }
       }
     }

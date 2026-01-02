@@ -14,12 +14,12 @@ void map_tiles_index_set(unsigned char row, unsigned char col, unsigned char lay
 void burn_out_tile(unsigned char y, unsigned char x);
 
 // VERA LOAD ADDRESSES
-#define MAP0_ADDR 0x0000
-#define MAP1_ADDR 0x2000
-#define NEEDLE_SPRITE_BITMAP_ADDR 0x6000
-#define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00
-#define FACE_SPRITE_BITMAP_ADDR 0x7000
-#define TILESET_ADDR 0x1F000
+#define MAP0_ADDR 0x0000L
+#define MAP1_ADDR 0x2000L
+#define NEEDLE_SPRITE_BITMAP_ADDR 0x6000L
+#define CIRCLE_SPRITE_BITMAP_ADDR 0x6E00L
+#define FACE_SPRITE_BITMAP_ADDR 0x7000L
+#define TILESET_ADDR 0x1F000L
 #define SPRITE_ATTR_ADDR 0x1FC08
 
 #define MAP_WIDTH_TILES 64
@@ -117,7 +117,7 @@ extern Person people_pool[MAX_PEOPLE];
 extern unsigned int people_count;
 extern const signed char people_dx[8];
 extern const signed char people_dy[8];
-extern unsigned int pm_idx;
+extern unsigned int current_person;
 extern signed char pm_dir;
 extern signed char pm_nx;
 extern signed char pm_ny;

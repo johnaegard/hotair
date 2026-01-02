@@ -24,7 +24,7 @@ char (*map_tiles_index)[64][2] = (char (*)[64][2])MAP_TILES_DATA_ADDRESS;
 unsigned char (*people_index)[64] = (unsigned char (*)[64])PEOPLE_INDEX_DATA_ADDRESS;
 
 unsigned char bomb_colors[NUM_UXBOMB_FRAMES] = {0x20, 0x03, 0x20, 0x0D};
-unsigned char bomb_chars[NUM_UXBOMB_FRAMES]  = {0x00, 0x57, 0x00, 0x5A};
+unsigned char bomb_chars[NUM_UXBOMB_FRAMES] = {0x00, 0x57, 0x00, 0x5A};
 unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES] = {
     {// FRAME 0
      {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -93,7 +93,7 @@ unsigned int people_count = 0;
 const signed char people_dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
 const signed char people_dy[8] = {1, 1, 1, 0, 0, -1, -1, -1};
 
-unsigned int pm_idx;
+unsigned int current_person;
 signed char pm_dir;
 signed char pm_nx;
 signed char pm_ny;
@@ -506,10 +506,10 @@ void people_setup(unsigned int num_people) {
       people_pool[people_count].x = person_x;
       people_pool[people_count].y = person_y;
       people_pool[people_count].alive = 1;
-      
+
       // Update people_index to track this person's location
       people_index_set(person_y, person_x, people_count);
-      
+
       people_count++;
     }
 
@@ -517,17 +517,67 @@ void people_setup(unsigned int num_people) {
   }
 }
 void people_move(void) {
+  unsigned char px, py;
+  signed char best_dir, check_x, check_y;
+  unsigned char min_fire_score;
+  unsigned char check_range;
+  unsigned char dir, i;
+
+  unsigned char fire_score;
+
   if (people_count == 0)
     return;
 
-  pm_idx = rand() % people_count;
-  if (!people_pool[pm_idx].alive)
+  if (current_person >= people_count) {
+    current_person = 0;
+  } else {
+    current_person++;
+  }
+
+  if (!people_pool[current_person].alive)
     return;
 
-  pm_dir = rand() % 8;
+  // Check for nearby fire and find best escape direction
+  px = people_pool[current_person].x;
+  py = people_pool[current_person].y;
+  best_dir = -1;
+  min_fire_score = 255;
+  check_range = 4;
 
-  pm_nx = people_pool[pm_idx].x + people_dx[pm_dir];
-  pm_ny = people_pool[pm_idx].y + people_dy[pm_dir];
+  // Evaluate all 8 directions
+  for (dir = 0; dir < 8; dir++) {
+    fire_score = 0;
+
+    // Check fire in this direction up to check_range
+    for (i = 1; i <= check_range; i++) {
+      check_x = px + (people_dx[dir] * i);
+      check_y = py + (people_dy[dir] * i);
+
+      if (check_x < 0 || check_x > MAP_WIDTH_TILES || check_y < 0 || check_y > MAP_HEIGHT_TILES) {
+        break;
+      }
+
+      if (fire_index_get(check_y, check_x) < NO_FIRE_MAGIC_VALUE) {
+        fire_score += (check_range - i + 1);  // Closer fire scores higher
+      }
+    }
+
+    // Track direction with lowest fire score
+    if (fire_score < min_fire_score) {
+      min_fire_score = fire_score;
+      best_dir = dir;
+    }
+  }
+
+  // Use best direction if fire nearby, otherwise random
+  if (min_fire_score > 0) {
+    pm_dir = best_dir;
+  } else {
+    pm_dir = rand() % 8;
+  }
+
+  pm_nx = people_pool[current_person].x + people_dx[pm_dir];
+  pm_ny = people_pool[current_person].y + people_dy[pm_dir];
 
   // bounds check
   if (pm_nx < 0 || pm_nx >= 64 || pm_ny < 0 || pm_ny >= 64)
@@ -546,9 +596,9 @@ void people_move(void) {
   VERA.address_hi = 0 | VERA_INC_1;
 
   // restore old position with backed-up tile
-  VERA.address = vera_tilemap_addr_offsets[people_pool[pm_idx].y][people_pool[pm_idx].x];
-  VERA.data0 = map_tiles_index_get(people_pool[pm_idx].y, people_pool[pm_idx].x, 0) + VALID_MAP_TILES_START_INDEX;
-  VERA.data0 = map_tiles_index_get(people_pool[pm_idx].y, people_pool[pm_idx].x, 1);
+  VERA.address = vera_tilemap_addr_offsets[people_pool[current_person].y][people_pool[current_person].x];
+  VERA.data0 = map_tiles_index_get(people_pool[current_person].y, people_pool[current_person].x, 0) + VALID_MAP_TILES_START_INDEX;
+  VERA.data0 = map_tiles_index_get(people_pool[current_person].y, people_pool[current_person].x, 1);
 
   // draw person at new location
   VERA.address = vera_tilemap_addr_offsets[pm_ny][pm_nx];
@@ -556,12 +606,12 @@ void people_move(void) {
   VERA.data0 = 0x21;
 
   // update people_index: clear old position, set new position
-  people_index_set(people_pool[pm_idx].y, people_pool[pm_idx].x, NO_PERSON_INDEX);
-  people_index_set(pm_ny, pm_nx, pm_idx);
+  people_index_set(people_pool[current_person].y, people_pool[current_person].x, NO_PERSON_INDEX);
+  people_index_set(pm_ny, pm_nx, current_person);
 
   // update pool
-  people_pool[pm_idx].x = pm_nx;
-  people_pool[pm_idx].y = pm_ny;
+  people_pool[current_person].x = pm_nx;
+  people_pool[current_person].y = pm_ny;
 }
 
 void draw_map(void) {
