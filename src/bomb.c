@@ -90,8 +90,18 @@ void bombs_explode() {
 
         // if the bomb is still exploding, paint leading edge of explosion
         if (bomb_pool[b].exploding && bomb_explosion_animation[bomb_pool[b].frame][dy + 4][dx + 4]) {
-          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] +1;
+          VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x] + 1;
           VERA.data0 = 0x01;
+          {
+            unsigned char pid = people_index_get(exp_y, exp_x);
+            if (pid != NO_PERSON_INDEX && people_pool[pid].alive) {
+              people_pool[pid].alive = 0;
+              people_alive--;
+              VERA.address = vera_tilemap_addr_offsets[exp_y][exp_x];
+              VERA.data0 = 0x82;
+              VERA.data0 = 0x21;
+            }
+          }
         }
 
         // trailing edge of explosion

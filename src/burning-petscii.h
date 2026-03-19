@@ -11,6 +11,7 @@ unsigned char water_index_get(unsigned char row, unsigned char col);
 void water_index_set(unsigned char row, unsigned char col, char value);
 unsigned char map_tiles_index_get(unsigned char row, unsigned char col, unsigned char layer);
 void map_tiles_index_set(unsigned char row, unsigned char col, unsigned char layer, char value);
+unsigned char people_index_get(unsigned char row, unsigned char col);
 void burn_out_tile(unsigned char y, unsigned char x);
 
 // VERA LOAD ADDRESSES
