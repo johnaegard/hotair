@@ -1,10 +1,16 @@
 CC=cl65
 X16=~/src/x16/x16emu/x16emu -run -scale 2
-hotair:
-	$(CC) -O -o HOTAIR.PRG -t cx16 -Ln hotair.lbl -C cx16-bank.cfg src/hotair.c src/wait.c
 
-runhotair:
-	../x16emu/x16emu -prg HOTAIR.PRG -run -debug
+burning-petscii:
+	$(CC) -O -o build/burning-petscii.prg -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
+
+distrib-burning-petscii: burning-petscii
+	mkdir -p distrib && \
+	cp build/burning-petscii.prg distrib && \
+	cp assets/face.bin assets/tiles.bin assets/overlay.bin assets/needle.bin assets/circle.bin distrib
+
+run-burning-petscii: distrib-burning-petscii
+	cd distrib && $(X16) -debug -prg burning-petscii.prg && cd -
 
 bitshift:
 	$(CC) -O -o build/BITSHIFT.PRG -t cx16 src/ancilliary/bitshift.c
@@ -44,17 +50,6 @@ display-tileset:
 
 run-display-tileset: display-tileset
 	cd assets && $(X16) -debug -prg ../build/DISPLAY-TILESET.PRG && cd -
-
-burning-petscii:
-	$(CC) -O -o build/burning-petscii.prg -t cx16  src/burning-petscii.c src/wait.c src/vera-util.c src/bomb.c src/map.c
-
-distrib-burning-petscii: burning-petscii
-	mkdir -p distrib && \
-	cp build/burning-petscii.prg distrib && \
-	cp assets/face.bin assets/tiles.bin assets/overlay.bin assets/needle.bin assets/circle.bin distrib
-
-run-burning-petscii: distrib-burning-petscii
-	cd distrib && $(X16) -debug -prg burning-petscii.prg && cd -
 
 clean:
 	rm -f *.PRG build/*.PRG *.lbl build/*.lbl build/*.o distrib/*

@@ -35,7 +35,7 @@ void burn_out_tile(unsigned char y, unsigned char x);
 #define FIRE_DURATION 18
 #define NO_FIRE_MAGIC_VALUE (FIRE_DURATION+1)
 #define FIRE_SEED_CHANCE 100
-#define FIRE_SPREAD_CHANCE 12000
+#define FIRE_SPREAD_CHANCE 25000
 #define SOAKED_SEED_CHANCE 500
 #define SOAK_DURATION 10
 #define BURNT_OUT 255
@@ -71,7 +71,7 @@ void burn_out_tile(unsigned char y, unsigned char x);
 #define FACE_SPRITE_ATTR_ADDR        (SPRITE_ATTR_ADDR + (2 * SPRITE_DEF_SIZE_BYTES))
 
 // PEOPLE
-#define MAX_PEOPLE 50
+#define MAX_PEOPLE 10
 
 // FROU-FROU
 #define PROGRESS_BAR_CHAR 0x5F
@@ -115,6 +115,7 @@ extern unsigned char bomb_chars[NUM_UXBOMB_FRAMES];
 extern unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][EXPLOSION_SIZE_TILES];
 extern Person people_pool[MAX_PEOPLE];
 extern unsigned int people_count;
+extern unsigned int people_alive;
 extern const signed char people_dx[8];
 extern const signed char people_dy[8];
 extern unsigned int current_person;

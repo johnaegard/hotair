@@ -89,6 +89,7 @@ unsigned char bomb_explosion_animation[EXPLOSION_FRAMES][EXPLOSION_SIZE_TILES][E
 
 Person people_pool[MAX_PEOPLE];
 unsigned int people_count = 0;
+unsigned int people_alive = 0;
 
 const signed char people_dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
 const signed char people_dy[8] = {1, 1, 1, 0, 0, -1, -1, -1};
@@ -382,6 +383,7 @@ void burn() {
     person_id = people_index_get(rand_y, rand_x);
     if (person_id != NO_PERSON_INDEX && people_pool[person_id].alive) {
       people_pool[person_id].alive = 0;
+      people_alive--;
       VERA.address = vera_tilemap_addr_offsets[rand_y][rand_x];
       VERA.data0 = 0x82;
       VERA.data0 = 0x21;
@@ -527,6 +529,7 @@ void people_setup(unsigned int num_people) {
 
     placed++;
   }
+  people_alive = people_count;
 }
 void people_move(void) {
   unsigned char px, py;
@@ -540,10 +543,9 @@ void people_move(void) {
   if (people_count == 0)
     return;
 
+  current_person++;
   if (current_person >= people_count) {
     current_person = 0;
-  } else {
-    current_person++;
   }
 
   if (!people_pool[current_person].alive){
@@ -717,6 +719,17 @@ void main(void) {
     bombs_blink();
     bombs_explode();
     people_move();
+    {
+      char buf[8];
+      unsigned char i;
+      sprintf(buf, "%2u", people_alive);
+      VERA.address_hi = VERA_INC_1;
+      for (i = 0; buf[i]; i++) {
+        VERA.address = vera_tilemap_addr_offsets[0][i];
+        VERA.data0 = buf[i];
+        VERA.data0 = 0x01;
+      }
+    }
     wait();
   }
 
